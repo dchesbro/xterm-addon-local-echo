@@ -52,7 +52,7 @@ export function offsetToColRow(input: string, offset: number, maxCols: number) {
       row += 1;
     } else {
       col += 1;
-      if (col > maxCols) {
+      if (col === maxCols) {
         col = 0;
         row += 1;
       }

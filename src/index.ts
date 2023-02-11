@@ -235,7 +235,7 @@ export class LocalEchoAddon implements ITerminalAddon {
    * additions to the input.
    */
   private applyPromptOffset(input: string, offset: number) {
-    const newInput = this.applyPrompts(input.substr(0, offset));
+    const newInput = this.applyPrompts(input.substring(0, offset));
     return newInput.replace(ansiRegex(), "").length;
   }
 
@@ -253,7 +253,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // Get the line we are currently in
     const promptCursor = this.applyPromptOffset(this.input, this.cursor);
-    const { row } = offsetToColRow(
+    const { col, row } = offsetToColRow(
       currentPrompt,
       promptCursor,
       this.terminalSize.cols
@@ -261,6 +261,11 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // First move on the last line
     const moveRows = allRows - row - 1;
+
+    // Move up for negative value
+    for (let i = moveRows; i < 0; ++i) this.terminal.write("\x1B[2K\x1B[F");
+
+    // Move down for positive value
     for (let i = 0; i < moveRows; ++i) this.terminal.write("\x1B[E");
 
     // Clear current input line(s)
@@ -296,6 +301,10 @@ export class LocalEchoAddon implements ITerminalAddon {
       this.terminalSize.cols
     );
     const moveUpRows = newLines - row - 1;
+
+    // xterm keep the cursor on last column when it is at the end of the line.
+    // Move it to next line.
+    if (row !== 0 && col === 0) this.terminal.write("\x1B[E");
 
     this.terminal.write("\r");
     for (let i = 0; i < moveUpRows; ++i) this.terminal.write("\x1B[F");
@@ -399,13 +408,13 @@ export class LocalEchoAddon implements ITerminalAddon {
     if (backspace) {
       if (this.cursor <= 0) return;
       const newInput =
-        this.input.substr(0, this.cursor - 1) + this.input.substr(this.cursor);
+        this.input.substring(0, this.cursor - 1) + this.input.substring(this.cursor);
       this.clearInput();
       this.cursor -= 1;
       this.setInput(newInput, false);
     } else {
       const newInput =
-        this.input.substr(0, this.cursor) + this.input.substr(this.cursor + 1);
+        this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1);
       this.setInput(newInput);
     }
   }
@@ -415,7 +424,7 @@ export class LocalEchoAddon implements ITerminalAddon {
    */
   private handleCursorInsert(data: string) {
     const newInput =
-      this.input.substr(0, this.cursor) + data + this.input.substr(this.cursor);
+      this.input.substring(0, this.cursor) + data + this.input.substring(this.cursor);
     this.cursor += data.length;
     this.setInput(newInput);
   }
@@ -482,7 +491,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // Handle ANSI escape sequences
     if (ord == 0x1b) {
-      switch (data.substr(1)) {
+      switch (data.substring(1)) {
         case "[A": // Up arrow
           if (this.history) {
             const value = this.history.getPrevious();
@@ -536,7 +545,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           ofs = closestLeftBoundary(this.input, this.cursor);
           if (ofs != null) {
             this.setInput(
-              this.input.substr(0, ofs) + this.input.substr(this.cursor)
+              this.input.substring(0, ofs) + this.input.substring(this.cursor)
             );
             this.setCursor(ofs);
           }
@@ -560,7 +569,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
         case "\t": // TAB
           if (this.autocompleteHandlers.length > 0) {
-            const inputFragment = this.input.substr(0, this.cursor);
+            const inputFragment = this.input.substring(0, this.cursor);
             const hasTailingSpace = hasTailingWhitespace(inputFragment);
             const candidates = collectAutocompleteCandidates(
               this.autocompleteHandlers,
@@ -581,7 +590,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               // Just a single candidate? Complete
               const lastToken = getLastToken(inputFragment);
               this.handleCursorInsert(
-                candidates[0].substr(lastToken.length) + " "
+                candidates[0].substring(lastToken.length) + " "
               );
             } else if (candidates.length <= this.maxAutocompleteEntries) {
               // search for a shared fragement
@@ -591,7 +600,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               // print complete the shared fragment
               if (sameFragment) {
                 const lastToken = getLastToken(inputFragment);
-                this.handleCursorInsert(sameFragment.substr(lastToken.length));
+                this.handleCursorInsert(sameFragment.substring(lastToken.length));
               }
 
               // If we are less than maximum auto-complete candidates, print
