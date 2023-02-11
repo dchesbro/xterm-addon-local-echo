@@ -512,11 +512,11 @@ export class LocalEchoAddon implements ITerminalAddon {
           break;
 
         case "[D": // Left Arrow
-          this.handleCursorMove(-1);
+          // this.handleCursorMove(-1);
           break;
 
         case "[C": // Right Arrow
-          this.handleCursorMove(1);
+          // this.handleCursorMove(1);
           break;
 
         case "[3~": // Delete
