@@ -2,37 +2,30 @@ import { parse } from "shell-quote";
 import ansiRegex from "./ansi-regex";
 
 /**
- * Detects all the word boundaries on the given input
+ * Get nearest word offset w/ respect to defined input and cursor offset.
+ * 
+ * @param input  Input string.
+ * @param cursor Input cursor offset.
+ * @param rtl    Right to left.
  */
-export function wordBoundaries(input: string, leftSide = true) {
-  let match;
+export function getOffsetWord(input: string, cursor: number, rtl: boolean) {
   const words = [];
-  const rx = /\w+/g;
+  const wordsRegex = /\w+/g;
 
-  while ((match = rx.exec(input))) {
-    if (leftSide) {
-      words.push(match.index);
-    } else {
-      words.push(match.index + match[0].length);
-    }
+  let found;
+  let matches;
+
+  while (matches = wordsRegex.exec(input)) {
+    words.push(matches.index);
   }
 
-  return words;
-}
+  if (rtl) {
+    found = words.reverse().find((value) => value < cursor) || 0;
+  } else {
+    found = words.find((value) => value > cursor) || input.length;
+  }
 
-/**
- * The closest left (or right) word boundary of the given input at the
- * given offset.
- */
-export function closestLeftBoundary(input: string, offset: number) {
-  const found = wordBoundaries(input, true)
-    .reverse()
-    .find((x) => x < offset);
-  return found == null ? 0 : found;
-}
-export function closestRightBoundary(input: string, offset: number) {
-  const found = wordBoundaries(input, false).find((x) => x > offset);
-  return found == null ? input.length : found;
+  return found;
 }
 
 /**

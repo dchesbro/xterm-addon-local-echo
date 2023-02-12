@@ -3,8 +3,8 @@ import ansiRegex from "./ansi-regex";
 
 import { HistoryController } from "./HistoryController";
 import {
-  closestLeftBoundary,
-  closestRightBoundary,
+  getOffsetWord,
+
   collectAutocompleteCandidates,
   countLines,
   getLastToken,
@@ -531,25 +531,33 @@ export class LocalEchoAddon implements ITerminalAddon {
           this.setCursor(0);
           break;
 
-        case "b": // ALT + LEFT
-          ofs = closestLeftBoundary(this.input, this.cursor);
-          if (ofs != null) this.setCursor(ofs);
-          break;
+        // Alt + Left
+        case 'b': {
+          let offset = getOffsetWord(this.input, this.cursor, true);
 
-        case "f": // ALT + RIGHT
-          ofs = closestRightBoundary(this.input, this.cursor);
-          if (ofs != null) this.setCursor(ofs);
+          this.setCursor(offset);
           break;
+        }
 
-        case "\x7F": // CTRL + BACKSPACE
-          ofs = closestLeftBoundary(this.input, this.cursor);
-          if (ofs != null) {
-            this.setInput(
-              this.input.substring(0, ofs) + this.input.substring(this.cursor)
-            );
-            this.setCursor(ofs);
-          }
+        // Alt + Right
+        case 'f': {
+          let offset = getOffsetWord(this.input, this.cursor, false);
+
+          this.setCursor(offset);
           break;
+        }
+
+        // Alt + Backspace
+        case '\x7F': {
+          let before = getOffsetWord(this.input, this.cursor, true);
+          let after = getOffsetWord(this.input, before, false);
+          
+          this.setInput(
+            this.input.substring(0, before) + this.input.substring(after)
+          );
+          this.setCursor(before);
+          break;
+        }
       }
 
       // Handle special characters
