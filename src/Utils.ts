@@ -2,13 +2,30 @@ import { parse } from "shell-quote";
 import ansiRegex from "./ansi-regex";
 
 /**
+ * Get column and row position for defined input and cursor offset.
+ * 
+ * @param input  Input string
+ * @param offset Input cursor offset.
+ * @param cols   Maximum number of columns.
+ * @returns 
+ */
+export function getOffsetColRow(input: string, offset: number, cols: number) {
+  const before = input.substring(0, offset);
+
+  return {
+    col: before.length - (Math.floor(before.length / cols) * cols),
+    row: Math.floor(before.length / cols)
+  };
+}
+
+/**
  * Get nearest word offset w/ respect to defined input and cursor offset.
  * 
  * @param input  Input string.
- * @param cursor Input cursor offset.
+ * @param offset Input cursor offset.
  * @param rtl    Right to left.
  */
-export function getOffsetWord(input: string, cursor: number, rtl: boolean) {
+export function getOffsetWord(input: string, offset: number, rtl: boolean) {
   const words = [];
   const wordsRegex = /\w+/g;
 
@@ -20,9 +37,9 @@ export function getOffsetWord(input: string, cursor: number, rtl: boolean) {
   }
 
   if (rtl) {
-    found = words.reverse().find((value) => value < cursor) || 0;
+    found = words.reverse().find((value) => value < offset) || 0;
   } else {
-    found = words.find((value) => value > cursor) || input.length;
+    found = words.find((value) => value > offset) || input.length;
   }
 
   return found;
