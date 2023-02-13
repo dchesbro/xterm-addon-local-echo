@@ -1,9 +1,9 @@
-import { HistoryController } from "./../src/HistoryController";
+import { History } from "../src/History";
 
 describe("HistoryController", () => {
   test("history size", () => {
     const historySize = 3;
-    const historyController = new HistoryController(historySize);
+    const historyController = new History(historySize);
 
     historyController.push("1");
     historyController.push("2");
@@ -16,7 +16,7 @@ describe("HistoryController", () => {
 
   test("history.getPrevious(), .getNext()", () => {
     const historySize = 10;
-    const historyController = new HistoryController(historySize);
+    const historyController = new History(historySize);
 
     expect(historyController.getPrevious()).toBeUndefined();
 

@@ -1,5 +1,5 @@
-import { parse } from "shell-quote";
-import ansiRegex from "./ansi-regex";
+import { quote, parse } from 'shell-quote';
+import ansiRegex from 'ansi-regex';
 
 /**
  * Get column and row position for defined input and cursor offset.
@@ -10,12 +10,26 @@ import ansiRegex from "./ansi-regex";
  * @returns 
  */
 export function getOffsetColRow(input: string, offset: number, cols: number) {
-  const before = input.substring(0, offset);
+  let col = 0;
+  let row = 0;
 
-  return {
-    col: before.length - (Math.floor(before.length / cols) * cols),
-    row: Math.floor(before.length / cols)
-  };
+  for (let i = 0; i < offset; i++) {
+    let ch = input.charAt(i);
+
+    if (ch === '\n') {
+      col = 0;
+      row++;
+    } else {
+      col++;
+
+      if (col === cols) {
+        col = 0;
+        row++;
+      }
+    }
+  }
+
+  return { col, row };
 }
 
 /**
@@ -44,6 +58,8 @@ export function getOffsetWord(input: string, offset: number, rtl: boolean) {
 
   return found;
 }
+
+
 
 /**
  * Convert offset at the given input to col/row location
