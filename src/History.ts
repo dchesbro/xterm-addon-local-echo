@@ -3,12 +3,12 @@
  */
 export class History {
   private index = 0;
-  private maxSize: number;
+  private sizeMax: number;
 
   public items: string[] = [];
 
   constructor(size: number) {
-    this.maxSize = size;
+    this.sizeMax = size;
   }
 
   /**
@@ -44,7 +44,7 @@ export class History {
     if (input !== prevItem) {
       this.items.push(input);
 
-      if (this.items.length > this.maxSize) {
+      if (this.items.length > this.sizeMax) {
         this.items.shift();
       }
     }
