@@ -7,9 +7,8 @@ import ansiRegex from 'ansi-regex';
  * @param input  Input string
  * @param offset Input cursor offset.
  * @param cols   Maximum number of columns.
- * @returns 
  */
-export function getOffsetColRow(input: string, offset: number, cols: number) {
+export function getColRow(input: string, offset: number, cols: number) {
   let col = 0;
   let row = 0;
 
@@ -33,13 +32,105 @@ export function getOffsetColRow(input: string, offset: number, cols: number) {
 }
 
 /**
- * Get nearest word offset w/ respect to defined input and cursor offset.
+ * Get last argument for defined input.
+ * 
+ * @param input Input string.
+ */
+export function getLastFragment(input: string): string {
+
+  // If empty or has trailing whitespace, return empty string.
+  if (input.trim() === '' || hasTailingWhitespace(input)) {
+    return '';
+  }
+
+  let argv = parse(input) as string[];
+
+  return argv.pop() || '';
+}
+
+/**
+ * Counts the number lines for defined input.
+ * 
+ * @param input Input string.
+ * @param cols  Maximum number of columns.
+ */
+export function getLineCount(input: string, cols: number) {
+  return getColRow(input, input.replace(ansiRegex(), '').length, cols).row + 1;
+}
+
+/**
+ * Loop through tab suggestions to find best match.
+ * 
+ * @param input       Input string.
+ * @param suggestions Array of tab complete suggestions.
+ */
+export function getSharedFragment(input: string, suggestions: string[]): string|null {
+
+  // End loop when input length is equal to suggestion length.
+  if (input.length >= suggestions[0].length) {
+    return input;
+  }
+
+  const prevInput = input;
+
+  // Get new input fragment.
+  input += suggestions[0].slice(input.length, input.length + 1);
+
+  for (let i = 0; i < suggestions.length; i++) {    
+    if (!suggestions[i].startsWith(prevInput)) {
+      return null;
+    }
+
+    if (!suggestions[i].startsWith(input)) {
+      return prevInput;
+    }
+  }
+
+  return getSharedFragment(input, suggestions);
+}
+
+/**
+ * Get tab complete suggestions for the defined input.
+ * 
+ * @param callbacks Tab complete callback functions.
+ * @param input     Input string.
+ */
+export function getTabSuggestions(callbacks: any[], input: string): string[] {
+  const token = parse(input);
+
+  let i = token.length - 1;
+  let exp = (token[i] as string) || '';
+
+  if (input.trim() === '') {
+    i = 0;
+    exp = '';
+  } else if (hasTailingWhitespace(input)) {
+    i += 1;
+    exp = '';
+  }
+
+  // Get all tab complete suggestions.
+  const suggestions = callbacks.reduce((candidates, { fn, args }) => {
+    try {
+      return candidates.concat(fn(i, token, ...args));
+    } catch (e) {
+      console.error('Tab complete error:', e);
+      
+      return candidates;
+    }
+  }, []);
+
+  return suggestions.filter((command: string) => command.startsWith(exp));
+}
+
+/**
+ * Get nearest word w/ respect to defined input and cursor offset.
  * 
  * @param input  Input string.
  * @param offset Input cursor offset.
  * @param rtl    Right to left.
  */
-export function getOffsetWord(input: string, offset: number, rtl: boolean) {
+export function getWord(input: string, offset: number, rtl: boolean) {
   const words = [];
   const wordsRegex = /\w+/g;
 
@@ -59,80 +150,32 @@ export function getOffsetWord(input: string, offset: number, rtl: boolean) {
   return found;
 }
 
-
-
 /**
- * Convert offset at the given input to col/row location
- *
- * This function is not optimized and practically emulates via brute-force
- * the navigation on the terminal, wrapping when they reach the column width.
+ * Check if given input string has incomplete character(s).
+ * 
+ * @param input Input string.
  */
-export function offsetToColRow(input: string, offset: number, maxCols: number) {
-  let row = 0,
-    col = 0;
+export function hasIncompleteChar(input: string) {
 
-  for (let i = 0; i < offset; ++i) {
-    const chr = input.charAt(i);
-    if (chr === "\n") {
-      col = 0;
-      row += 1;
-    } else {
-      col += 1;
-      if (col === maxCols) {
-        col = 0;
-        row += 1;
-      }
-    }
-  }
-
-  return { row, col };
-}
-
-/**
- * Counts the lines in the given input
- */
-export function countLines(input: string, maxCols: number) {
-  return (
-    offsetToColRow(input, input.replace(ansiRegex(), "").length, maxCols).row +
-    1
-  );
-}
-
-/**
- * Checks if there is an incomplete input
- *
- * An incomplete input is considered:
- * - An input that contains unterminated single quotes
- * - An input that contains unterminated double quotes
- * - An input that ends with "\"
- * - An input that has an incomplete boolean shell expression (&& and ||)
- * - An incomplete pipe expression (|)
- */
-export function isIncompleteInput(input: string) {
-  // Empty input is not incomplete
-  if (input.trim() == "") {
-    return false;
-  }
-
-  // Check for dangling single-quote strings
+  // Has open single quote.
   if ((input.match(/'/g) || []).length % 2 !== 0) {
     return true;
   }
-  // Check for dangling double-quote strings
+
+  // Has open double quote.
   if ((input.match(/"/g) || []).length % 2 !== 0) {
     return true;
   }
-  // Check for dangling boolean or pipe operations
-  if (
-    input
-      .split(/(\|\||\||&&)/g)
-      .pop()
-      ?.trim() == ""
-  ) {
+
+  // Has boolean or pipe operator.
+  let bools = input.split(/(\|\||\||&&)/g);
+
+  if (bools.pop()?.trim() === '') {
     return true;
   }
-  // Check for tailing slash
-  if (input.endsWith("\\") && !input.endsWith("\\\\")) {
+
+  // Has trailing slash.
+  if (input.endsWith('\\') && !input.endsWith('\\\\')) {
     return true;
   }
 
@@ -140,81 +183,10 @@ export function isIncompleteInput(input: string) {
 }
 
 /**
- * Returns true if the expression ends on a tailing whitespace
+ * Check if defined input string has trailing whitespace.
+ * 
+ * @param input Input string.
  */
 export function hasTailingWhitespace(input: string) {
-  return input.match(/[^\\][ \t]$/m) != null;
-}
-
-/**
- * Returns the last expression in the given input
- */
-export function getLastToken(input: string): string {
-  // Empty expressions
-  if (input.trim() === "") return "";
-  if (hasTailingWhitespace(input)) return "";
-
-  // Last token
-  const tokens = parse(input) as string[];
-  return tokens.pop() || "";
-}
-
-/**
- * Returns the auto-complete candidates for the given input
- */
-export function collectAutocompleteCandidates(
-  callbacks: any[],
-  input: string
-): string[] {
-  const tokens = parse(input);
-  let index = tokens.length - 1;
-  let expr = (tokens[index] as string) || "";
-
-  // Empty expressions
-  if (input.trim() === "") {
-    index = 0;
-    expr = "";
-  } else if (hasTailingWhitespace(input)) {
-    // Expressions with danging space
-    index += 1;
-    expr = "";
-  }
-
-  // Collect all auto-complete candidates from the callbacks
-  const all = callbacks.reduce((candidates, { fn, args }) => {
-    try {
-      return candidates.concat(fn(index, tokens, ...args));
-    } catch (e) {
-      console.error("Auto-complete error:", e);
-      return candidates;
-    }
-  }, []);
-
-  // Filter only the ones starting with the expression
-  return all.filter((txt: string) => txt.startsWith(expr));
-}
-
-export function getSharedFragment(
-  fragment: string,
-  candidates: string[]
-): string | null {
-  // end loop when fragment length = first candidate length
-  if (fragment.length >= candidates[0].length) return fragment;
-
-  // save old fragemnt
-  const oldFragment = fragment;
-
-  // get new fragment
-  fragment += candidates[0].slice(fragment.length, fragment.length + 1);
-
-  for (let i = 0; i < candidates.length; i++) {
-    // return null when there's a wrong candidate
-    if (!candidates[i].startsWith(oldFragment)) return null;
-
-    if (!candidates[i].startsWith(fragment)) {
-      return oldFragment;
-    }
-  }
-
-  return getSharedFragment(fragment, candidates);
+  return input.match(/[^\\][ \t]$/m) !== null;
 }

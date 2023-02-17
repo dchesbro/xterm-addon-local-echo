@@ -1,18 +1,16 @@
-import type { Terminal, ITerminalAddon, IDisposable } from "xterm";
+import type { Terminal, ITerminalAddon, IDisposable } from 'xterm';
 import ansiRegex from 'ansi-regex';
 
-import { History } from "./History";
+import { History } from './History';
 import {
-  getOffsetColRow,
-  getOffsetWord,
-
-  collectAutocompleteCandidates,
-  countLines,
-  getLastToken,
-  hasTailingWhitespace,
-  isIncompleteInput,
-  offsetToColRow,
+  getColRow,
+  getLastFragment,
+  getLineCount,
   getSharedFragment,
+  getTabSuggestions,
+  getWord,
+  hasIncompleteChar,
+  hasTailingWhitespace
 } from "./Utils";
 
 interface Size {
@@ -309,11 +307,11 @@ export class LocalEchoAddon implements ITerminalAddon {
     const currentPrompt = this.applyPrompts(this.input);
 
     // Get the overall number of lines to clear
-    const allRows = countLines(currentPrompt, this.terminalSize.cols);
+    const allRows = getLineCount(currentPrompt, this.terminalSize.cols);
 
     // Get the line we are currently in
     const promptCursor = this.applyPromptOffset(this.input, this.cursor);
-    const { col, row } = offsetToColRow(
+    const { col, row } = getColRow(
       currentPrompt,
       promptCursor,
       this.terminalSize.cols
@@ -354,8 +352,8 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // Move the cursor to the appropriate row/col
     const newCursor = this.applyPromptOffset(newInput, this.cursor);
-    const newLines = countLines(newPrompt, this.terminalSize.cols);
-    const { col, row } = offsetToColRow(
+    const newLines = getLineCount(newPrompt, this.terminalSize.cols);
+    const { col, row } = getColRow(
       newPrompt,
       newCursor,
       this.terminalSize.cols
@@ -416,7 +414,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // Estimate previous cursor position
     const prevPromptOffset = this.applyPromptOffset(this.input, this.cursor);
-    const { col: prevCol, row: prevRow } = offsetToColRow(
+    const { col: prevCol, row: prevRow } = getColRow(
       inputWithPrompt,
       prevPromptOffset,
       this.terminalSize.cols
@@ -424,7 +422,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // Estimate next cursor position
     const newPromptOffset = this.applyPromptOffset(this.input, newCursor);
-    const { col: newCol, row: newRow } = offsetToColRow(
+    const { col: newCol, row: newRow } = getColRow(
       inputWithPrompt,
       newPromptOffset,
       this.terminalSize.cols
@@ -593,7 +591,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
         // Alt + Left
         case 'b': {
-          let offset = getOffsetWord(this.input, this.cursor, true);
+          let offset = getWord(this.input, this.cursor, true);
 
           this.setCursor(offset);
           break;
@@ -601,7 +599,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
         // Alt + Right
         case 'f': {
-          let offset = getOffsetWord(this.input, this.cursor, false);
+          let offset = getWord(this.input, this.cursor, false);
 
           this.setCursor(offset);
           break;
@@ -609,8 +607,8 @@ export class LocalEchoAddon implements ITerminalAddon {
 
         // Alt + Backspace
         case '\x7F': {
-          let before = getOffsetWord(this.input, this.cursor, true);
-          let after = getOffsetWord(this.input, before, false);
+          let before = getWord(this.input, this.cursor, true);
+          let after = getWord(this.input, before, false);
           
           this.setInput(
             this.input.substring(0, before) + this.input.substring(after)
@@ -624,7 +622,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     } else if (ord < 32 || ord === 0x7f) {
       switch (data) {
         case "\r": // ENTER
-          if (isIncompleteInput(this.input)) {
+          if (hasIncompleteChar(this.input)) {
             this.handleCursorInsert("\n");
           } else {
             this.handleReadComplete();
@@ -639,7 +637,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           if (this.autocompleteHandlers.length > 0) {
             const inputFragment = this.input.substring(0, this.cursor);
             const hasTailingSpace = hasTailingWhitespace(inputFragment);
-            const candidates = collectAutocompleteCandidates(
+            const candidates = getTabSuggestions(
               this.autocompleteHandlers,
               inputFragment
             );
@@ -656,7 +654,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               }
             } else if (candidates.length === 1) {
               // Just a single candidate? Complete
-              const lastToken = getLastToken(inputFragment);
+              const lastToken = getLastFragment(inputFragment);
               this.handleCursorInsert(
                 candidates[0].substring(lastToken.length) + " "
               );
@@ -667,7 +665,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               // if there's a shared fragement between the candidates
               // print complete the shared fragment
               if (sameFragment) {
-                const lastToken = getLastToken(inputFragment);
+                const lastToken = getLastFragment(inputFragment);
                 this.handleCursorInsert(sameFragment.substring(lastToken.length));
               }
 
@@ -681,7 +679,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               // them only if the user acknowledges a warning
               this.printAndRestartPrompt(() =>
                 this.readChar(
-                  `Display all ${candidates.length} possibilities? (y or n)`
+                  `Do you wish to see all ${candidates.length} possibilities? (y/n) `
                 ).then((yn) => {
                   if (yn == "y" || yn == "Y") {
                     this.printlsInline(candidates);
