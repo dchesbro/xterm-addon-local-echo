@@ -3,7 +3,7 @@ import ansiRegex from 'ansi-regex';
 
 import { History } from './History';
 import { getColRow, getLastFragment, getLineCount, getSharedFragment, 
-  getTabSuggestions, getWord, hasIncompleteChar, hasTailingWhitespace 
+  getTabSuggestions, getWord, hasIncompleteChars, hasTailingWhitespace 
 } from './Utils';
 
 interface ActivePrompt {
@@ -285,7 +285,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
 
   /**
-   * Clear current input and move the cursor to the beginning of the prompt.
+   * Clear current input and move the cursor to beginning of prompt.
    */
   private clearInput() {
     const input = this.applyPrompt(this.input);
@@ -294,19 +294,14 @@ export class LocalEchoAddon implements ITerminalAddon {
     // Get current cursor position and lines count.
     const { row } = getColRow(input, offset, this.terminalSize.cols);
     const lines = getLineCount(input, this.terminalSize.cols)
-    const linesMove = lines - (row + 1);
+    const linesDown = lines - (row + 1);
 
-    // If negative value, move up.
-    for (let i = linesMove; i < 0; i++) {
-      this.terminal.write('\x1B[2K\x1B[F');
-    }
-
-    // If positive value, move down.
-    for (let i = 0; i < linesMove; i++) {
+    // Move to last line of the current input.
+    for (let i = 0; i < linesDown; i++) {
       this.terminal.write('\x1B[E');
     }
 
-    // First clear the current line, then clear all remaining lines.
+    // Clear the current line, then move up and clear remaining lines.
     this.terminal.write('\r\x1B[K');
 
     for (let i = 1; i < lines; i++) {
@@ -327,43 +322,60 @@ export class LocalEchoAddon implements ITerminalAddon {
       this.clearInput();
     }
 
-    // Set cursor to input length if less than current position.
+    // Make sure cursor is within input length.
     this.cursor = Math.min(input.length, this.cursor);
 
-    const cursorOffset = this.applyPromptOffset(input, this.cursor);
+    const cursor = this.applyPromptOffset(input, this.cursor);
     const prompt = this.applyPrompt(input);
     
     // ...
     this.print(prompt);
 
-    const { col: cursorCol, row: cursorRow } = getColRow(
+    const { col, row: rowC } = getColRow(
       prompt,
-      cursorOffset,
+      cursor,
       this.terminalSize.cols
     );
-    const { col: promptCol, row: promptRow } = getColRow(
+    const { row: rowP } = getColRow(
       prompt,
       prompt.length,
       this.terminalSize.cols
     );
-    const col = Math.max(cursorCol, promptCol);
-    const row = Math.max(cursorRow, promptRow);
+    const trailingChars = prompt.substring(cursor).length;
+
+    // If trailing characters found, check if they wrap...
+    if (trailingChars) {
+      const offset = cursor % this.terminalSize.cols;
+
+      if ((offset + trailingChars) === this.terminalSize.cols) {
+        this.terminal.write('\x1B[E');
+      }
+
+    // ...else, check for cursor wrap.
+    } else {
+      if (col === 0) {
+        this.terminal.write('\x1B[E');
+      }
+    }
 
     const lines = getLineCount(prompt, this.terminalSize.cols);
+    const linesMove = lines - (rowC + 1);
+
+    console.log(lines, rowC, rowP, linesMove);
+
+    /* this.terminal.write('\r');
 
     // ...
-    const linesMove = lines - (row + 1);
+    for (let i = 0; i < linesMove; i++) {
+      this.terminal.write('\x1B[F');
+    }
 
-    // xterm keep the cursor on last column when it is at the end of the line.
-    // Move it to next line.
-    if (col === 0) this.terminal.write('\x1B[E');
+    // ...
+    for (let i = 0; i < col; i++) {
+      this.terminal.write('\x1B[C');
+    } */
 
-    this.terminal.write('\r');
-
-    for (let i = 0; i < linesMove; ++i) this.terminal.write("\x1B[F");
-    for (let i = 0; i < col; ++i) this.terminal.write('\x1B[C');
-
-    // Replace input
+    // ...
     this.input = input;
   }
 
@@ -618,7 +630,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     } else if (ord < 32 || ord === 0x7f) {
       switch (data) {
         case "\r": // ENTER
-          if (hasIncompleteChar(this.input)) {
+          if (hasIncompleteChars(this.input)) {
             this.handleCursorInsert("\n");
           } else {
             this.handleReadComplete();
