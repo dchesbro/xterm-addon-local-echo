@@ -155,7 +155,7 @@ export function getWord(input: string, offset: number, rtl: boolean) {
  * 
  * @param input Input string.
  */
-export function hasIncompleteChar(input: string) {
+export function hasIncompleteChars(input: string) {
 
   // Has open single quote.
   if ((input.match(/'/g) || []).length % 2 !== 0) {
