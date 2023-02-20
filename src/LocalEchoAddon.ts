@@ -289,7 +289,7 @@ export class LocalEchoAddon implements ITerminalAddon {
    */
   private clearInput() {
     const input = this.applyPrompt(this.input);
-    const offset = this.applyPromptOffset(this.input, this.cursor);
+    const offset = this.applyPromptOffset(this.input, input.length);
 
     // Get current cursor position and lines count.
     const { row } = getColRow(input, offset, this.terminalSize.cols);
