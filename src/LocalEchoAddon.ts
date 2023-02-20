@@ -2,68 +2,84 @@ import type { Terminal, ITerminalAddon, IDisposable } from 'xterm';
 import ansiRegex from 'ansi-regex';
 
 import { History } from './History';
-import {
-  getColRow,
-  getLastFragment,
-  getLineCount,
-  getSharedFragment,
-  getTabSuggestions,
-  getWord,
-  hasIncompleteChar,
-  hasTailingWhitespace
-} from "./Utils";
-
-interface Size {
-  cols: number;
-  rows: number;
-}
+import { getColRow, getLastFragment, getLineCount, getSharedFragment, 
+  getTabSuggestions, getWord, hasIncompleteChar, hasTailingWhitespace 
+} from './Utils';
 
 interface ActivePrompt {
   ps1: string;
   ps2: string;
-  reject: any;
   resolve: any;
+  reject: any;
 }
 
-interface AutoCompleteHandler {
-  fn: Function;
+export interface Options {
+  enableIncomplete: boolean;
+  historySize: number;
+  tabCompleteSize: number;
+}
+
+interface TabCompleteHandler {
+  callback: Function;
   args: any[];
 }
 
-export interface Option {
-  historySize: number;
-  maxAutocompleteEntries: number;
+interface TerminalSize {
+  cols: number;
+  rows: number;
 }
 
 export class LocalEchoAddon implements ITerminalAddon {
-  constructor(
-    options: Option = {
-      historySize: 10,
-      maxAutocompleteEntries: 100,
-    }
-  ) {
-    this.history = new History(options.historySize);
-    this.maxAutocompleteEntries = options.maxAutocompleteEntries;
-  }
-
-  public history: History;
-
   private terminal!: Terminal;
   private disposables: IDisposable[] = [];
 
-  private maxAutocompleteEntries: number;
-
-  private autocompleteHandlers: AutoCompleteHandler[] = [];
   private active = false;
-  private input = "";
-  private cursor = 0;
   private activePrompt: ActivePrompt | null = null;
-  private activeCharPrompt: ActivePrompt | null = null;
+  private activePromptChar: ActivePrompt | null = null;
+  private cursor = 0;
+  private enableIncomplete: boolean;
+  private input = '';
+  private tabCompleteHandlers: TabCompleteHandler[] = [];
+  private tabCompleteSize: number;
+  private terminalSize: TerminalSize = { cols: 0, rows: 0 };
 
-  private terminalSize: Size = {
-    cols: 0,
-    rows: 0,
-  };
+  public history: History;
+  
+  constructor(
+    options: Options = {
+      enableIncomplete: false,
+      historySize: 10,
+      tabCompleteSize: 100,
+    }
+  ) {
+    this.enableIncomplete = options.enableIncomplete;
+    this.history = new History(options.historySize);
+    this.tabCompleteSize = options.tabCompleteSize;
+  }
+
+  private attach() {
+    if (!this.terminal) {
+      return;
+    }
+    
+    this.disposables.push(this.terminal.onData((data) => {
+      return this.handleTermData(data);
+    }));
+
+    this.disposables.push(this.terminal.onResize((size) => {
+      return this.handleTermResize(size);
+    }));
+
+    this.terminalSize = {
+      cols: this.terminal.cols,
+      rows: this.terminal.rows,
+    };
+  }
+
+  private detach() {
+    this.disposables.forEach((e) => e.dispose());
+    this.disposables = [];
+  }
 
   public activate(terminal: Terminal): void {
     this.terminal = terminal;
@@ -74,32 +90,17 @@ export class LocalEchoAddon implements ITerminalAddon {
     this.detach();
   }
 
-  /**
-   * Register a handler that will be called to satisfy auto-completion
-   */
-  public addAutocompleteHandler(fn: Function, ...args: any[]) {
-    this.autocompleteHandlers.push({
-      fn,
-      args,
-    });
-  }
+  /*--------------------------------------------------------------------------*/
+  // Public API
+  /*--------------------------------------------------------------------------*/
 
   /**
-   * Remove a previously registered auto-complete handler
+   * Return promise that resolves when a complete input is sent.
+   * 
+   * @param ps1 Default input prompt string.
+   * @param ps2 Continuation input prompt string.
    */
-  public removeAutocompleteHandler(fn: Function) {
-    const idx = this.autocompleteHandlers.findIndex((e) => e.fn === fn);
-    if (idx === -1) return;
-
-    this.autocompleteHandlers.splice(idx, 1);
-  }
-
-
-
-  /**
-   * Return a promise that resolves when a user inputs a complete line.
-   */
-  public async read(ps1: string, ps2 = "> ") {
+  public async read(ps1 = '$ ', ps2 = '> ') {
     return new Promise((resolve, reject) => {
       this.terminal.write(ps1);
 
@@ -107,67 +108,74 @@ export class LocalEchoAddon implements ITerminalAddon {
       this.activePrompt = {
         ps1,
         ps2,
-        reject,
         resolve,
+        reject,
       };
       this.cursor = 0;
-      this.input = "";
+      this.input = '';
     });
   }
 
   /**
    * Return a promise that resolves when a user inputs a single character -- can 
    * be active in addition to `read()` and will resolve before it.
+   * 
+   * @param ps1 Default input prompt string.
    */
-  readChar(ps1: string) {
+  public async readChar(ps1: string) {
     return new Promise((resolve, reject) => {
       this.terminal.write(ps1);
 
-      this.activeCharPrompt = {
+      this.activePromptChar = {
         ps1,
-        ps2: "",
-        reject,
+        ps2: '',
         resolve,
+        reject,
       };
     });
   }
 
-
-
   /**
-   * Abort a pending read operation
+   * Abort read operation(s), if any are pending.
+   * 
+   * @param reason Abort reason string.
    */
-  abortRead(reason = "aborted") {
-    if (this.activePrompt != null || this.activeCharPrompt != null) {
-      this.terminal.write("\r\n");
+  public readAbort(reason = 'READINT') {
+    if (this.activePrompt !== null || this.activePromptChar !== null) {
+      this.terminal.write('\r\n');
     }
-    if (this.activePrompt != null) {
+
+    if (this.activePrompt !== null) {
       this.activePrompt.reject(reason);
       this.activePrompt = null;
     }
-    if (this.activeCharPrompt != null) {
-      this.activeCharPrompt.reject(reason);
-      this.activeCharPrompt = null;
+
+    if (this.activePromptChar !== null) {
+      this.activePromptChar.reject(reason);
+      this.activePromptChar = null;
     }
+
     this.active = false;
   }
 
-
-
   /**
    * Print string and format newline characters.
+   * 
+   * @param output String to print.
    */
-  print(output: string) {
-    const print = output.replace(/[\r\n]+/g, "\n");
+  public print(output: string) {
+    const print = output.replace(/[\r\n]+/g, '\n');
     
-    this.terminal.write(print.replace(/\n/g, "\r\n"));
+    this.terminal.write(print.replace(/\n/g, '\r\n'));
   }
 
   /**
    * Print string w/ newline.
+   * 
+   * @param output String to print.
    */
-  println(output: string) {
-    this.print(output + "\n");
+  public println(output: string) {
+    this.print(output + '\n');
   }
 
   /**
@@ -176,27 +184,24 @@ export class LocalEchoAddon implements ITerminalAddon {
    * @param items   Array of list items.
    * @param padding Horizontal padding between list items.
    */
-  printlsInline(items: string[], padding = 3) {
+  public printlsInline(items: string[], padding = 3) {
     if (items.length === 0) {
       return;
     }
 
-    const widthItem = items.reduce((width, item) => Math.max(width, item.length), 0);
+    const width = items.reduce((width, e) => Math.max(width, e.length), 0);
     const widthTerm = this.terminal.cols;
-    const cols = Math.floor(widthTerm / widthItem) || 1;
-    const rows = Math.floor(items.length / widthItem) || 1;
+    const cols = Math.floor(widthTerm / width) || 1;
+    const rows = Math.floor(items.length / width) || 1;
 
     let i = 0;
 
     for (let row = 0; row < rows; row++) {
-      let output = "";
+      let output = '';
 
       for (let col = 0; col < cols; col++) {
         if (i < items.length) {
-          let item = items[i++];
-
-          item += " ".repeat(widthItem + padding - item.length);
-          output += item;
+          output += items[i++].padEnd(width + padding, ' ');
         }
       }
 
@@ -210,125 +215,103 @@ export class LocalEchoAddon implements ITerminalAddon {
    * @param items   Array of list items.
    * @param padding Horizontal padding between columns.
    */
-  printlsNumber(items: string[], padding = 3) {
+  public printlsNumber(items: string[], padding = 3) {
     if (items.length === 0) {
       return;
     }
 
-    const numCols = items.length.toString().length;
+    const cols = items.length.toString().length;
 
     for (let i = 0; i < items.length; i++ ) {
-      this.println(`${i + 1}`.padStart(numCols, ' ') + ' '.repeat(padding) + items[i]);
+      this.println(`${i + 1}`.padEnd(padding, ' ').padStart(cols, ' ') + items[i]);
     }
   }
-
-
 
   /**
-   * Prints a list of items using a wide-format
+   * Add a tab complete handler function.
+   * 
+   * @param callback Handler function.
+   * @param args     Additional arguments.
    */
-  printWide(items: string[], padding = 2) {
-    if (items.length == 0) return this.println("");
+  public addTabCompleteHandler(callback: Function, ...args: any[]) {
+    this.tabCompleteHandlers.push({ callback, args });
+  }
 
-    // Compute item sizes and matrix row/cols
-    const itemWidth =
-      items.reduce((width, item) => Math.max(width, item.length), 0) + padding;
-    const wideCols = Math.floor(this.terminalSize.cols / itemWidth);
-    const wideRows = Math.ceil(items.length / wideCols);
+  /**
+   * Remove a previously added tab complete handler function.
+   * 
+   * @param callback Handler function.
+   */
+  public removeTabCompleteHandler(callback: Function) {
+    const index = this.tabCompleteHandlers.findIndex((e) => {
+      return e.callback === callback;
+    });
 
-    // Print matrix
-    let i = 0;
-    for (let row = 0; row < wideRows; ++row) {
-      let rowStr = "";
-
-      // Prepare columns
-      for (let col = 0; col < wideCols; ++col) {
-        if (i < items.length) {
-          let item = items[i++];
-          item += " ".repeat(itemWidth - item.length);
-          rowStr += item;
-        }
-      }
-      this.println(rowStr);
+    if (index !== -1) {
+      this.tabCompleteHandlers.splice(index, 1);
     }
   }
 
-  private attach() {
-    if (!this.terminal) return;
-    this.disposables.push(
-      this.terminal.onData((data) => this.handleTermData(data))
-    );
-    this.disposables.push(
-      this.terminal.onResize((size) => this.handleTermResize(size))
-    );
+  /*--------------------------------------------------------------------------*/
+  // Private(~ish) API
+  /*--------------------------------------------------------------------------*/
 
-    this.terminalSize = {
-      cols: this.terminal.cols,
-      rows: this.terminal.rows,
+  /**
+   * Apply prompt string(s) to the defined input.
+   * 
+   * @param input Input string.
+   */
+  private applyPrompt(input: string) {
+    const prompt = {
+      ...{ ps1: '', ps2: '' },
+      ...this.activePrompt
     };
-  }
 
-  private detach() {
-    this.disposables.forEach((d) => d.dispose());
-    this.disposables = [];
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // Internal API
-  /////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Apply prompts to the given input
-   */
-  private applyPrompts(input: string) {
-    const prompt = (this.activePrompt || {}).ps1 || "";
-    const continuationPrompt =
-      (this.activePrompt || {}).ps2 || "";
-
-    return prompt + input.replace(/\n/g, "\n" + continuationPrompt);
+    return prompt.ps1 + input.replace(/\n/g, '\n' + prompt.ps2);
   }
 
   /**
-   * Advances the `offset` as required in order to accompany the prompt
-   * additions to the input.
+   * Returns adjusted offset w/ respect to defined input and prompt strings.
+   * 
+   * @param input  Input string.
+   * @param offset Input cursor offset.
    */
   private applyPromptOffset(input: string, offset: number) {
-    const newInput = this.applyPrompts(input.substring(0, offset));
-    return newInput.replace(ansiRegex(), "").length;
+    const prompt = this.applyPrompt(input.substring(0, offset));
+
+    return prompt.replace(ansiRegex(), '').length;
   }
 
+
+
   /**
-   * Clears the current prompt
-   *
-   * This function will erase all the lines that display the current prompt
-   * and move the cursor in the beginning of the first line of the prompt.
+   * Clear current input and move the cursor to the beginning of the prompt.
    */
   private clearInput() {
-    const currentPrompt = this.applyPrompts(this.input);
+    const input = this.applyPrompt(this.input);
+    const offset = this.applyPromptOffset(this.input, this.cursor);
 
-    // Get the overall number of lines to clear
-    const allRows = getLineCount(currentPrompt, this.terminalSize.cols);
+    // Get current cursor position and lines count.
+    const { row } = getColRow(input, offset, this.terminalSize.cols);
+    const lines = getLineCount(input, this.terminalSize.cols)
+    const linesMove = lines - (row + 1);
 
-    // Get the line we are currently in
-    const promptCursor = this.applyPromptOffset(this.input, this.cursor);
-    const { col, row } = getColRow(
-      currentPrompt,
-      promptCursor,
-      this.terminalSize.cols
-    );
+    // If negative value, move up.
+    for (let i = linesMove; i < 0; i++) {
+      this.terminal.write('\x1B[2K\x1B[F');
+    }
 
-    // First move on the last line
-    const moveRows = allRows - row - 1;
+    // If positive value, move down.
+    for (let i = 0; i < linesMove; i++) {
+      this.terminal.write('\x1B[E');
+    }
 
-    // Move up for negative value
-    for (let i = moveRows; i < 0; ++i) this.terminal.write("\x1B[2K\x1B[F");
+    // First clear the current line, then clear all remaining lines.
+    this.terminal.write('\r\x1B[K');
 
-    // Move down for positive value
-    for (let i = 0; i < moveRows; ++i) this.terminal.write("\x1B[E");
-
-    // Clear current input line(s)
-    this.terminal.write("\r\x1B[K");
-    for (let i = 1; i < allRows; ++i) this.terminal.write("\x1B[F\x1B[K");
+    for (let i = 1; i < lines; i++) {
+      this.terminal.write('\x1B[F\x1B[K');
+    }
   }
 
   /**
@@ -337,39 +320,51 @@ export class LocalEchoAddon implements ITerminalAddon {
    * This function clears all the lines that the current input occupies and
    * then replaces them with the new input.
    */
-  private setInput(newInput: string, clearInput = true) {
-    // Clear current input
-    if (clearInput) this.clearInput();
+  private writeInput(input: string, clearInput = true) {
 
-    // Write the new input lines, including the current prompt
-    const newPrompt = this.applyPrompts(newInput);
-    this.print(newPrompt);
-
-    // Trim cursor overflow
-    if (this.cursor > newInput.length) {
-      this.cursor = newInput.length;
+    // Clear current input?
+    if (clearInput) {
+      this.clearInput();
     }
 
-    // Move the cursor to the appropriate row/col
-    const newCursor = this.applyPromptOffset(newInput, this.cursor);
-    const newLines = getLineCount(newPrompt, this.terminalSize.cols);
-    const { col, row } = getColRow(
-      newPrompt,
-      newCursor,
+    // Set cursor to input length if less than current position.
+    this.cursor = Math.min(input.length, this.cursor);
+
+    const cursorOffset = this.applyPromptOffset(input, this.cursor);
+    const prompt = this.applyPrompt(input);
+    
+    // ...
+    this.print(prompt);
+
+    const { col: cursorCol, row: cursorRow } = getColRow(
+      prompt,
+      cursorOffset,
       this.terminalSize.cols
     );
-    const moveUpRows = newLines - row - 1;
+    const { col: promptCol, row: promptRow } = getColRow(
+      prompt,
+      prompt.length,
+      this.terminalSize.cols
+    );
+    const col = Math.max(cursorCol, promptCol);
+    const row = Math.max(cursorRow, promptRow);
+
+    const lines = getLineCount(prompt, this.terminalSize.cols);
+
+    // ...
+    const linesMove = lines - (row + 1);
 
     // xterm keep the cursor on last column when it is at the end of the line.
     // Move it to next line.
-    if (row !== 0 && col === 0) this.terminal.write("\x1B[E");
+    if (col === 0) this.terminal.write('\x1B[E');
 
-    this.terminal.write("\r");
-    for (let i = 0; i < moveUpRows; ++i) this.terminal.write("\x1B[F");
-    for (let i = 0; i < col; ++i) this.terminal.write("\x1B[C");
+    this.terminal.write('\r');
+
+    for (let i = 0; i < linesMove; ++i) this.terminal.write("\x1B[F");
+    for (let i = 0; i < col; ++i) this.terminal.write('\x1B[C');
 
     // Replace input
-    this.input = newInput;
+    this.input = input;
   }
 
   /**
@@ -386,7 +381,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     // Prepare a function that will resume prompt
     const resume = () => {
       this.cursor = cursor;
-      this.setInput(this.input);
+      this.writeInput(this.input);
     };
 
     // Call the given callback to echo something, and if there is a promise
@@ -410,7 +405,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     if (newCursor > this.input.length) newCursor = this.input.length;
 
     // Apply prompt formatting to get the visual status of the display
-    const inputWithPrompt = this.applyPrompts(this.input);
+    const inputWithPrompt = this.applyPrompt(this.input);
 
     // Estimate previous cursor position
     const prevPromptOffset = this.applyPromptOffset(this.input, this.cursor);
@@ -469,11 +464,11 @@ export class LocalEchoAddon implements ITerminalAddon {
         this.input.substring(0, this.cursor - 1) + this.input.substring(this.cursor);
       this.clearInput();
       this.cursor -= 1;
-      this.setInput(newInput, false);
+      this.writeInput(newInput, false);
     } else {
       const newInput =
         this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1);
-      this.setInput(newInput);
+      this.writeInput(newInput);
     }
   }
 
@@ -484,7 +479,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     const newInput =
       this.input.substring(0, this.cursor) + data + this.input.substring(this.cursor);
     this.cursor += data.length;
-    this.setInput(newInput);
+    this.writeInput(newInput);
   }
 
   /**
@@ -509,11 +504,12 @@ export class LocalEchoAddon implements ITerminalAddon {
    * updates the cached terminal size information and then re-renders the
    * input. This leads (most of the times) into a better formatted input.
    */
-  private handleTermResize(data: Size) {
-    const { rows, cols } = data;
+  private handleTermResize(size: TerminalSize) {
+    const { cols, rows } = size;
+    
     this.clearInput();
     this.terminalSize = { cols, rows };
-    this.setInput(this.input, false);
+    this.writeInput(this.input, false);
   }
 
   /**
@@ -523,9 +519,9 @@ export class LocalEchoAddon implements ITerminalAddon {
     if (!this.active) return;
 
     // If we have an active character prompt, satisfy it in priority
-    if (this.activeCharPrompt != null) {
-      this.activeCharPrompt.resolve(data);
-      this.activeCharPrompt = null;
+    if (this.activePromptChar != null) {
+      this.activePromptChar.resolve(data);
+      this.activePromptChar = null;
       this.terminal.write("\r\n");
       return;
     }
@@ -554,7 +550,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           if (this.history) {
             const value = this.history.getPrev();
             if (value) {
-              this.setInput(value);
+              this.writeInput(value);
               this.setCursor(value.length);
             }
           }
@@ -564,17 +560,17 @@ export class LocalEchoAddon implements ITerminalAddon {
           if (this.history) {
             let value = this.history.getNext();
             if (!value) value = "";
-            this.setInput(value);
+            this.writeInput(value);
             this.setCursor(value.length);
           }
           break;
 
         case "[D": // Left Arrow
-          // this.handleCursorMove(-1);
+          this.handleCursorMove(-1);
           break;
 
         case "[C": // Right Arrow
-          // this.handleCursorMove(1);
+          this.handleCursorMove(1);
           break;
 
         case "[3~": // Delete
@@ -610,7 +606,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           let before = getWord(this.input, this.cursor, true);
           let after = getWord(this.input, before, false);
           
-          this.setInput(
+          this.writeInput(
             this.input.substring(0, before) + this.input.substring(after)
           );
           this.setCursor(before);
@@ -634,11 +630,11 @@ export class LocalEchoAddon implements ITerminalAddon {
           break;
 
         case "\t": // TAB
-          if (this.autocompleteHandlers.length > 0) {
+          if (this.tabCompleteHandlers.length > 0) {
             const inputFragment = this.input.substring(0, this.cursor);
             const hasTailingSpace = hasTailingWhitespace(inputFragment);
             const candidates = getTabSuggestions(
-              this.autocompleteHandlers,
+              this.tabCompleteHandlers,
               inputFragment
             );
 
@@ -658,7 +654,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               this.handleCursorInsert(
                 candidates[0].substring(lastToken.length) + " "
               );
-            } else if (candidates.length <= this.maxAutocompleteEntries) {
+            } else if (candidates.length <= this.tabCompleteSize) {
               // search for a shared fragement
               const sameFragment = getSharedFragment(inputFragment, candidates);
 
