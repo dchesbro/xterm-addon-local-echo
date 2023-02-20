@@ -98,21 +98,21 @@ export function getSharedFragment(input: string, suggestions: string[]): string|
 export function getTabSuggestions(callbacks: any[], input: string): string[] {
   const token = parse(input);
 
-  let i = token.length - 1;
-  let exp = (token[i] as string) || '';
+  let index = token.length - 1;
+  let exp = (token[index] as string) || '';
 
   if (input.trim() === '') {
-    i = 0;
+    index = 0;
     exp = '';
   } else if (hasTailingWhitespace(input)) {
-    i += 1;
+    index += 1;
     exp = '';
   }
 
   // Get all tab complete suggestions.
-  const suggestions = callbacks.reduce((candidates, { fn, args }) => {
+  const suggestions = callbacks.reduce((candidates, { callback, args }) => {
     try {
-      return candidates.concat(fn(i, token, ...args));
+      return candidates.concat(callback(index, token, ...args));
     } catch (e) {
       console.error('Tab complete error:', e);
       
