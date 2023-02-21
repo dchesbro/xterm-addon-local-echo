@@ -282,8 +282,6 @@ export class LocalEchoAddon implements ITerminalAddon {
     return prompt.replace(ansiRegex(), '').length;
   }
 
-
-
   /**
    * Clear current input and move the cursor to beginning of prompt.
    */
@@ -309,13 +307,15 @@ export class LocalEchoAddon implements ITerminalAddon {
     }
   }
 
+
+
   /**
-   * Replace input with the new input given
-   *
-   * This function clears all the lines that the current input occupies and
-   * then replaces them with the new input.
+   * Write defined input w/ current input or as replacement for current input.
+   * 
+   * @param input      Input string.
+   * @param clearInput Clear current input before writing.
    */
-  private writeInput(input: string, clearInput = true) {
+  private async writeInput(input: string, clearInput = true) {
 
     // Clear current input?
     if (clearInput) {
@@ -327,20 +327,13 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     const cursor = this.applyPromptOffset(input, this.cursor);
     const prompt = this.applyPrompt(input);
+
+    // console.log(this.cursor, cursor, prompt.length);
     
     // ...
     this.print(prompt);
 
-    const { col, row: rowC } = getColRow(
-      prompt,
-      cursor,
-      this.terminalSize.cols
-    );
-    const { row: rowP } = getColRow(
-      prompt,
-      prompt.length,
-      this.terminalSize.cols
-    );
+    const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
     const trailingChars = prompt.substring(cursor).length;
 
     // If trailing characters found, check if they wrap...
@@ -358,26 +351,26 @@ export class LocalEchoAddon implements ITerminalAddon {
       }
     }
 
-    const lines = getLineCount(prompt, this.terminalSize.cols);
+    // Move cursor to beginning of current row then right.
+    this.terminal.write('\r');
+
+    for (let i = 0; i < col; i++) {
+      this.terminal.write('\x1B[C');
+    }
+
+    /* const lines = getLineCount(prompt, this.terminalSize.cols);
     const linesMove = lines - (rowC + 1);
-
-    console.log(lines, rowC, rowP, linesMove);
-
-    /* this.terminal.write('\r');
 
     // ...
     for (let i = 0; i < linesMove; i++) {
       this.terminal.write('\x1B[F');
-    }
-
-    // ...
-    for (let i = 0; i < col; i++) {
-      this.terminal.write('\x1B[C');
     } */
 
     // ...
     this.input = input;
   }
+
+
 
   /**
    * This function completes the current input, calls the given callback
@@ -453,46 +446,61 @@ export class LocalEchoAddon implements ITerminalAddon {
     this.cursor = newCursor;
   }
 
+
+
   /**
-   * Move cursor at given direction
+   * Insert character(s) at current cursor offset.
+   * 
+   * @param input Input string.
    */
-  private handleCursorMove(dir: number) {
-    if (dir > 0) {
-      const num = Math.min(dir, this.input.length - this.cursor);
-      this.setCursor(this.cursor + num);
-    } else if (dir < 0) {
-      const num = Math.max(dir, -this.cursor);
-      this.setCursor(this.cursor + num);
+  private handleCursorInsert(input: string) {
+    const insert = this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor);
+
+    // Add input length to cursor offset.
+    this.cursor += input.length;
+
+    this.writeInput(insert);
+  }
+  
+  /**
+   * Move cursor w/ respect to current cursor offset.
+   * 
+   * @param offset Cursor movement offset.
+   */
+  private handleCursorMove(offset: number) {
+
+    // If positive offset, move cursor forward.
+    if (offset > 0) {
+      const move = Math.min(offset, (this.input.length - this.cursor));
+
+      this.setCursor(this.cursor + move);
+
+    // ...else, if negative offset, move cursor back.
+    } else if (offset < 0) {
+      const move = Math.max(offset, (this.cursor * -1));
+
+      this.setCursor(this.cursor + move);
     }
   }
 
   /**
    * Erase a character at cursor location
+   * 
+   * @param bksp Backspace key press.
    */
-  private handleCursorErase(backspace: boolean) {
-    if (backspace) {
-      if (this.cursor <= 0) return;
-      const newInput =
-        this.input.substring(0, this.cursor - 1) + this.input.substring(this.cursor);
-      this.clearInput();
+  private handleCursorErase(bksp: boolean) {
+
+    // If backspace key press, move cursor position back.
+    if (bksp && this.cursor > 0) {
       this.cursor -= 1;
-      this.writeInput(newInput, false);
-    } else {
-      const newInput =
-        this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1);
-      this.writeInput(newInput);
     }
+
+    const erase = this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1);
+    
+    this.writeInput(erase);
   }
 
-  /**
-   * Insert character at cursor location
-   */
-  private handleCursorInsert(data: string) {
-    const newInput =
-      this.input.substring(0, this.cursor) + data + this.input.substring(this.cursor);
-    this.cursor += data.length;
-    this.writeInput(newInput);
-  }
+
 
   /**
    * Handle input completion
@@ -544,6 +552,73 @@ export class LocalEchoAddon implements ITerminalAddon {
       Array.from(normData).forEach((c) => this.handleData(c));
     } else {
       this.handleData(data);
+    }
+  }
+
+
+
+  private handleData_(data: any) {
+    const char = data.charCodeAt(0);
+
+    console.log(data, char);
+
+    // ANSI escape sequences...
+    if (char === 0x1B) {
+      switch (data.substring(1)) {
+
+        // Left arrow.
+        case '[D': {
+          if (this.cursor > 0) {
+            this.cursor -= 1;
+
+            this.terminal.write('\x1B[D');
+          }
+          break;
+        }
+
+        // Right arrow.
+        case '[C': {
+          if (this.cursor < this.input.length) {
+            this.cursor += 1;
+
+            this.terminal.write('\x1B[C');
+          }
+          break;
+        }
+      }
+
+    // Special characters...
+    } else if (char < 32 || char === 127) {
+      
+
+    // Default...
+    } else {
+      let a = '';
+      let b = this.input.substring(0, this.cursor);
+      let o = data;
+
+      // ...
+      if (this.cursor < this.input.length) {
+        a = this.input.substring(this.cursor);
+        o += a;
+      }
+
+      this.cursor += data.length;
+      this.input = b + o;
+
+      console.log(a, b, o);
+
+      if (this.input.length === (this.terminalSize.cols - 1)) {
+        this.terminal.write('\r\n');
+      }
+
+      this.terminal.write(o);
+
+      for (let i = 0; i < a.length; i++) {
+        this.terminal.write('\x1B[D');
+      }
+
+      console.log(this.cursor, this.input);
     }
   }
 
