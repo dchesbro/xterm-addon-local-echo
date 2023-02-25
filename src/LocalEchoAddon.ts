@@ -14,8 +14,8 @@ interface ActivePrompt {
 }
 
 export interface Options {
-  enableIncomplete: boolean;
   historySize: number;
+  incompleteEnabled: boolean;
   tabCompleteSize: number;
 }
 
@@ -37,7 +37,7 @@ export class LocalEchoAddon implements ITerminalAddon {
   private activePrompt: ActivePrompt | null = null;
   private activePromptChar: ActivePrompt | null = null;
   private cursor = 0;
-  private enableIncomplete: boolean;
+  private incompleteEnabled: boolean;
   private input = '';
   private tabCompleteHandlers: TabCompleteHandler[] = [];
   private tabCompleteSize: number;
@@ -45,16 +45,10 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   public history: History;
   
-  constructor(
-    options: Options = {
-      enableIncomplete: false,
-      historySize: 10,
-      tabCompleteSize: 100,
-    }
-  ) {
-    this.enableIncomplete = options.enableIncomplete;
-    this.history = new History(options.historySize);
-    this.tabCompleteSize = options.tabCompleteSize;
+  constructor(options?: Partial<Options>) {
+    this.history = new History(options?.historySize ?? 10);
+    this.incompleteEnabled = options?.incompleteEnabled ?? true;
+    this.tabCompleteSize = options?.tabCompleteSize ?? 10;
   }
 
   private attach() {
@@ -316,21 +310,64 @@ export class LocalEchoAddon implements ITerminalAddon {
    * @param clearInput Clear current input before writing.
    */
   private async writeInput(input: string, clearInput = true) {
+    
+    // Clear current input?
+    if (clearInput) {
+      this.clearInput();
+    }
+
+    // Make sure cursor offset isn't outside of input length.
+    if (this.cursor > input.length) {
+      this.cursor = input.length;
+    }
+
+    const cursor = this.applyPromptOffset(input, this.cursor);
+    const prompt = this.applyPrompt(input);
+
+    // Write input w/prompt to terminal.
+    this.print(prompt);
+
+    const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
+
+    // Wrap to newline?
+    if (row !== 0 && col === 0) {
+      this.terminal.write('\x1B[E');
+    }
+
+    const lines = getLineCount(prompt, this.terminalSize.cols);
+    const moveUp = lines - (row + 1);
+
+    // Move cursor to beginning of current row.
+    this.terminal.write('\r');
+
+    for (let i = 0; i < moveUp; i++) {
+      this.terminal.write('\x1B[F');
+    }
+
+    for (let i = 0; i < col; i++) {
+      this.terminal.write('\x1B[C');
+    }
+
+    // Set input.
+    this.input = input;
+  }
+
+  private async writeInput_(input: string, clearInput = true) {
 
     // Clear current input?
     if (clearInput) {
       this.clearInput();
     }
 
-    // Make sure cursor is within input length.
-    this.cursor = Math.min(input.length, this.cursor);
+    // Make sure cursor offset isn't outside of input length.
+    if (this.cursor > input.length) {
+      this.cursor = input.length;
+    }
 
     const cursor = this.applyPromptOffset(input, this.cursor);
     const prompt = this.applyPrompt(input);
 
-    // console.log(this.cursor, cursor, prompt.length);
-    
-    // ...
+    // Write input to terminal.
     this.print(prompt);
 
     const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
@@ -344,29 +381,28 @@ export class LocalEchoAddon implements ITerminalAddon {
         this.terminal.write('\x1B[E');
       }
 
-    // ...else, check for cursor wrap.
+    // ...else, maybe wrap to newline.
     } else {
-      if (col === 0) {
+      if (row !== 0 && col === 0) {
         this.terminal.write('\x1B[E');
       }
     }
 
+    const lines = getLineCount(prompt, this.terminalSize.cols);
+    const moveUp = lines - (row + 1);
+
     // Move cursor to beginning of current row then right.
     this.terminal.write('\r');
+
+    for (let i = 0; i < moveUp; i++) {
+      this.terminal.write('\x1B[F');
+    }
 
     for (let i = 0; i < col; i++) {
       this.terminal.write('\x1B[C');
     }
 
-    /* const lines = getLineCount(prompt, this.terminalSize.cols);
-    const linesMove = lines - (rowC + 1);
-
-    // ...
-    for (let i = 0; i < linesMove; i++) {
-      this.terminal.write('\x1B[F');
-    } */
-
-    // ...
+    // Set input.
     this.input = input;
   }
 
@@ -454,10 +490,9 @@ export class LocalEchoAddon implements ITerminalAddon {
    * @param input Input string.
    */
   private handleCursorInsert(input: string) {
-    const insert = this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor);
-
-    // Add input length to cursor offset.
     this.cursor += input.length;
+
+    const insert = this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor);
 
     this.writeInput(insert);
   }
@@ -555,238 +590,200 @@ export class LocalEchoAddon implements ITerminalAddon {
     }
   }
 
-
-
-  private handleData_(data: any) {
-    const char = data.charCodeAt(0);
-
-    console.log(data, char);
-
-    // ANSI escape sequences...
-    if (char === 0x1B) {
-      switch (data.substring(1)) {
-
-        // Left arrow.
-        case '[D': {
-          if (this.cursor > 0) {
-            this.cursor -= 1;
-
-            this.terminal.write('\x1B[D');
-          }
-          break;
-        }
-
-        // Right arrow.
-        case '[C': {
-          if (this.cursor < this.input.length) {
-            this.cursor += 1;
-
-            this.terminal.write('\x1B[C');
-          }
-          break;
-        }
-      }
-
-    // Special characters...
-    } else if (char < 32 || char === 127) {
-      
-
-    // Default...
-    } else {
-      let a = '';
-      let b = this.input.substring(0, this.cursor);
-      let o = data;
-
-      // ...
-      if (this.cursor < this.input.length) {
-        a = this.input.substring(this.cursor);
-        o += a;
-      }
-
-      this.cursor += data.length;
-      this.input = b + o;
-
-      console.log(a, b, o);
-
-      if (this.input.length === (this.terminalSize.cols - 1)) {
-        this.terminal.write('\r\n');
-      }
-
-      this.terminal.write(o);
-
-      for (let i = 0; i < a.length; i++) {
-        this.terminal.write('\x1B[D');
-      }
-
-      console.log(this.cursor, this.input);
-    }
-  }
-
   /**
    * Handle a single piece of information from the terminal.
+   * 
+   * 
    */
   private handleData(data: string) {
-    if (!this.active) return;
-    const ord = data.charCodeAt(0);
-    let ofs;
 
-    // Handle ANSI escape sequences
-    if (ord == 0x1b) {
+    // If no prompt(s) active, return.
+    if (!this.active){
+      return;
+    }
+
+    const char = data.charCodeAt(0);
+    
+    console.log(this.tabCompleteSize);
+
+    // If ANSI escape sequence...
+    if (char == 0x1b) {
       switch (data.substring(1)) {
-        case "[A": // Up arrow
+
+        // Up arrow.
+        case '[A':
           if (this.history) {
-            const value = this.history.getPrev();
-            if (value) {
-              this.writeInput(value);
-              this.setCursor(value.length);
+            const prev = this.history.getPrev();
+            
+            if (prev) {
+              this.writeInput(prev);
+              this.setCursor(prev.length);
             }
           }
           break;
 
-        case "[B": // Down arrow
+        // Down arrow.
+        case '[B':
           if (this.history) {
-            let value = this.history.getNext();
-            if (!value) value = "";
-            this.writeInput(value);
-            this.setCursor(value.length);
+            const next = this.history.getNext() || '';
+
+            this.writeInput(next);
+            this.setCursor(next.length);
           }
           break;
 
-        case "[D": // Left Arrow
+        /* Left arrow.
+        case '[D':
           this.handleCursorMove(-1);
-          break;
+          break; */
 
-        case "[C": // Right Arrow
+        /* Right arrow.
+        case '[C':
           this.handleCursorMove(1);
-          break;
+          break; */
 
-        case "[3~": // Delete
+        // Delete.
+        case '[3~':
           this.handleCursorErase(false);
           break;
 
-        case "[F": // End
+        /* End.
+        case '[F':
           this.setCursor(this.input.length);
-          break;
+          break; */
 
-        case "[H": // Home
+        /* Home.
+        case '[H':
           this.setCursor(0);
-          break;
+          break; */
 
-        // Alt + Left
-        case 'b': {
-          let offset = getWord(this.input, this.cursor, true);
+        /* Alt + left arrow.
+        case 'b':
+          const left = getWord(this.input, this.cursor, true);
 
-          this.setCursor(offset);
-          break;
-        }
+          this.setCursor(left);
+          break; */
 
-        // Alt + Right
-        case 'f': {
-          let offset = getWord(this.input, this.cursor, false);
+        /* Alt + right arrow.
+        case 'f':
+          const right = getWord(this.input, this.cursor, false);
 
-          this.setCursor(offset);
-          break;
-        }
+          this.setCursor(right);
+          break; */
 
-        // Alt + Backspace
+        // Alt + backspace.
         case '\x7F': {
-          let before = getWord(this.input, this.cursor, true);
-          let after = getWord(this.input, before, false);
+          const b = getWord(this.input, this.cursor, true);
+          const a = getWord(this.input, b, false);
           
-          this.writeInput(
-            this.input.substring(0, before) + this.input.substring(after)
-          );
-          this.setCursor(before);
+          this.writeInput(this.input.substring(0, b) + this.input.substring(a));
+          this.setCursor(b);
           break;
         }
       }
 
-      // Handle special characters
-    } else if (ord < 32 || ord === 0x7f) {
+    // ...else, if special character...
+    } else if (char < 32 || char === 0x7f) {
       switch (data) {
-        case "\r": // ENTER
-          if (hasIncompleteChars(this.input)) {
-            this.handleCursorInsert("\n");
+
+        // Enter.
+        case '\r':
+          if (this.incompleteEnabled) {
+
+            // If current input has incomplete char(s), move to new line.
+            if (hasIncompleteChars(this.input)) {
+              this.handleCursorInsert('\n');
+            }
           } else {
             this.handleReadComplete();
           }
           break;
 
-        case "\x7F": // BACKSPACE
+        // Backspace.
+        case '\x7F':
           this.handleCursorErase(true);
           break;
 
-        case "\t": // TAB
-          if (this.tabCompleteHandlers.length > 0) {
-            const inputFragment = this.input.substring(0, this.cursor);
-            const hasTailingSpace = hasTailingWhitespace(inputFragment);
-            const candidates = getTabSuggestions(
+        // Tab.
+        case '\t':          
+          if (this.tabCompleteHandlers.length) {
+            const fragment = this.input.substring(0, this.cursor);
+            const suggestions = getTabSuggestions(
               this.tabCompleteHandlers,
-              inputFragment
+              fragment
             );
+            const trailingWhitespace = hasTailingWhitespace(fragment);
 
-            // Sort candidates
-            candidates.sort();
+            suggestions.sort();
 
-            // Depending on the number of candidates, we are handing them in
-            // a different way.
-            if (candidates.length === 0) {
-              // No candidates? Just add a space if there is none already
-              if (!hasTailingSpace) {
-                this.handleCursorInsert(" ");
+            // If no suggestions found...
+            if (suggestions.length === 0) {
+
+              // If no trailing whitespace already, insert space.
+              if (!trailingWhitespace) {
+                this.handleCursorInsert(' ');
               }
-            } else if (candidates.length === 1) {
-              // Just a single candidate? Complete
-              const lastToken = getLastFragment(inputFragment);
+
+            // ...else, if only one suggestion found, print it...
+            } else if (suggestions.length === 1) {
+              const fragmentLast = getLastFragment(fragment);
+
               this.handleCursorInsert(
-                candidates[0].substring(lastToken.length) + " "
+                suggestions[0].substring(fragmentLast.length) + ' '
               );
-            } else if (candidates.length <= this.tabCompleteSize) {
-              // search for a shared fragement
-              const sameFragment = getSharedFragment(inputFragment, candidates);
 
-              // if there's a shared fragement between the candidates
-              // print complete the shared fragment
-              if (sameFragment) {
-                const lastToken = getLastFragment(inputFragment);
-                this.handleCursorInsert(sameFragment.substring(lastToken.length));
+            // ...else, if number of suggestions less than max, print list...
+            } else if (suggestions.length <= this.tabCompleteSize) {
+              const fragmentShared = getSharedFragment(fragment, suggestions);
+
+              // If shared fragment found, print it.
+              if (fragmentShared) {
+                const fragmentLast = getLastFragment(fragment);
+
+                this.handleCursorInsert(
+                  fragmentShared.substring(fragmentLast.length)
+                );
               }
 
-              // If we are less than maximum auto-complete candidates, print
-              // them to the user and re-start prompt
               this.printAndRestartPrompt(() => {
-                this.printlsInline(candidates);
+                this.printlsInline(suggestions);
               });
+
+            // ...else, print suggestions prompt.
             } else {
-              // If we have more than maximum auto-complete candidates, print
-              // them only if the user acknowledges a warning
               this.printAndRestartPrompt(() =>
                 this.readChar(
-                  `Do you wish to see all ${candidates.length} possibilities? (y/n) `
-                ).then((yn) => {
-                  if (yn == "y" || yn == "Y") {
-                    this.printlsInline(candidates);
+                  `Do you wish to see all ${suggestions.length} possibilities? (y/n) `
+                ).then((char) => {
+                  if (char === 'y' || char === 'Y') {
+                    this.printlsInline(suggestions);
                   }
                 })
               );
             }
           } else {
-            this.handleCursorInsert("    ");
+            this.handleCursorInsert('    ');
           }
           break;
 
-        case "\x03": // CTRL+C
+        // Ctrl + C.
+        case '\x03':
+          const prompt = {
+            ...{ ps1: '', ps2: '' },
+            ...this.activePrompt
+          };
+
           this.setCursor(this.input.length);
-          this.terminal.write(
-            "^C\r\n" + ((this.activePrompt || {}).ps1 || "")
-          );
-          this.input = "";
+          this.terminal.write('^C\r\n' + prompt.ps1);
+
           this.cursor = 0;
+          this.input = '';
+
           if (this.history) this.history.rewind();
           break;
       }
 
-      // Handle visible characters
+    // ...else, printable character(s).
     } else {
       this.handleCursorInsert(data);
     }
