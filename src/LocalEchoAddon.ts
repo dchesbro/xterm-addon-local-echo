@@ -310,49 +310,6 @@ export class LocalEchoAddon implements ITerminalAddon {
    * @param clearInput Clear current input before writing.
    */
   private async writeInput(input: string, clearInput = true) {
-    
-    // Clear current input?
-    if (clearInput) {
-      this.clearInput();
-    }
-
-    // Make sure cursor offset isn't outside of input length.
-    if (this.cursor > input.length) {
-      this.cursor = input.length;
-    }
-
-    const cursor = this.applyPromptOffset(input, this.cursor);
-    const prompt = this.applyPrompt(input);
-
-    // Write input w/prompt to terminal.
-    this.print(prompt);
-
-    const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
-
-    // Wrap to newline?
-    if (row !== 0 && col === 0) {
-      this.terminal.write('\x1B[E');
-    }
-
-    const lines = getLineCount(prompt, this.terminalSize.cols);
-    const moveUp = lines - (row + 1);
-
-    // Move cursor to beginning of current row.
-    this.terminal.write('\r');
-
-    for (let i = 0; i < moveUp; i++) {
-      this.terminal.write('\x1B[F');
-    }
-
-    for (let i = 0; i < col; i++) {
-      this.terminal.write('\x1B[C');
-    }
-
-    // Set input.
-    this.input = input;
-  }
-
-  private async writeInput_(input: string, clearInput = true) {
 
     // Clear current input?
     if (clearInput) {
@@ -402,7 +359,7 @@ export class LocalEchoAddon implements ITerminalAddon {
       this.terminal.write('\x1B[C');
     }
 
-    // Set input.
+    // Replace previous input.
     this.input = input;
   }
 
