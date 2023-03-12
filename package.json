@@ -34,9 +34,6 @@
   "scripts": {
     "build": "microbundle",
     "dev": "microbundle watch",
-    "lint:eslint": "eslint \"./{src,test}/**/*.ts\" --fix",
-    "lint:prettier": "prettier \"./{src,test}/**/*.ts\" --write",
-    "lint": "npm run lint:eslint && npm run lint:prettier",
     "prepublishOnly": "yarn build",
     "test": "jest"
   },
@@ -48,8 +45,6 @@
     "@types/jest": "^27.0.1",
     "@types/shell-quote": "^1.7.1",
     "ansi-regex": "^6.0.1",
-    "eslint": "^7.32.0",
-    "eslint-config-airbnb": "^19.0.4",
     "jest": "^27.1.0",
     "microbundle": "^0.13.3",
     "shell-quote": "^1.7.2",
