@@ -286,10 +286,10 @@ export class LocalEchoAddon implements ITerminalAddon {
     // Get current cursor position and lines count.
     const { row } = getColRow(input, offset, this.terminalSize.cols);
     const lines = getLineCount(input, this.terminalSize.cols)
-    const linesDown = lines - (row + 1);
+    const moveDown = lines - (row + 1);
 
     // Move to last line of the current input.
-    for (let i = 0; i < linesDown; i++) {
+    for (let i = 0; i < moveDown; i++) {
       this.terminal.write('\x1B[E');
     }
 
@@ -301,15 +301,13 @@ export class LocalEchoAddon implements ITerminalAddon {
     }
   }
 
-
-
   /**
-   * Write defined input w/ current input or as replacement for current input.
+   * Set defined input w/ previous input or replace previous input.
    * 
    * @param input      Input string.
    * @param clearInput Clear current input before writing.
    */
-  private async writeInput(input: string, clearInput = true) {
+  private async setInput(input: string, clearInput = true) {
 
     // Clear current input?
     if (clearInput) {
@@ -324,7 +322,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     const cursor = this.applyPromptOffset(input, this.cursor);
     const prompt = this.applyPrompt(input);
 
-    // Write input to terminal.
+    // Print input to terminal.
     this.print(prompt);
 
     const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
@@ -359,7 +357,7 @@ export class LocalEchoAddon implements ITerminalAddon {
       this.terminal.write('\x1B[C');
     }
 
-    // Replace previous input.
+    // Set input.
     this.input = input;
   }
 
@@ -369,17 +367,17 @@ export class LocalEchoAddon implements ITerminalAddon {
    * This function completes the current input, calls the given callback
    * and then re-displays the prompt.
    */
-  private printAndRestartPrompt(callback: any) {
+  private applyPromptComplete(callback: any) {
     const cursor = this.cursor;
 
     // Complete input
     this.setCursor(this.input.length);
-    this.terminal.write("\r\n");
+    this.terminal.write('\r\n');
 
     // Prepare a function that will resume prompt
     const resume = () => {
       this.cursor = cursor;
-      this.writeInput(this.input);
+      this.setInput(this.input);
     };
 
     // Call the given callback to echo something, and if there is a promise
@@ -451,7 +449,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     const insert = this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor);
 
-    this.writeInput(insert);
+    this.setInput(insert);
   }
   
   /**
@@ -489,7 +487,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     const erase = this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1);
     
-    this.writeInput(erase);
+    this.setInput(erase);
   }
 
 
@@ -521,7 +519,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     
     this.clearInput();
     this.terminalSize = { cols, rows };
-    this.writeInput(this.input, false);
+    this.setInput(this.input, false);
   }
 
   /**
@@ -548,9 +546,9 @@ export class LocalEchoAddon implements ITerminalAddon {
   }
 
   /**
-   * Handle a single piece of information from the terminal.
+   * Handle data input from terminal based on key press.
    * 
-   * 
+   * @param data Key press data from terminal.
    */
   private handleData(data: string) {
 
@@ -561,8 +559,6 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     const char = data.charCodeAt(0);
     
-    console.log(this.tabCompleteSize);
-
     // If ANSI escape sequence...
     if (char == 0x1b) {
       switch (data.substring(1)) {
@@ -573,7 +569,7 @@ export class LocalEchoAddon implements ITerminalAddon {
             const prev = this.history.getPrev();
             
             if (prev) {
-              this.writeInput(prev);
+              this.setInput(prev);
               this.setCursor(prev.length);
             }
           }
@@ -584,7 +580,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           if (this.history) {
             const next = this.history.getNext() || '';
 
-            this.writeInput(next);
+            this.setInput(next);
             this.setCursor(next.length);
           }
           break;
@@ -633,7 +629,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           const b = getWord(this.input, this.cursor, true);
           const a = getWord(this.input, b, false);
           
-          this.writeInput(this.input.substring(0, b) + this.input.substring(a));
+          this.setInput(this.input.substring(0, b) + this.input.substring(a));
           this.setCursor(b);
           break;
         }
@@ -702,13 +698,13 @@ export class LocalEchoAddon implements ITerminalAddon {
                 );
               }
 
-              this.printAndRestartPrompt(() => {
+              this.applyPromptComplete(() => {
                 this.printlsInline(suggestions);
               });
 
             // ...else, print suggestions prompt.
             } else {
-              this.printAndRestartPrompt(() =>
+              this.applyPromptComplete(() =>
                 this.readChar(
                   `Do you wish to see all ${suggestions.length} possibilities? (y/n) `
                 ).then((char) => {

@@ -1,56 +1,55 @@
 {
   "name": "@dchesbro/xterm-addon-local-echo",
   "version": "0.0.1",
-  "description": "A local echo controller for xterm.js",
-  "type": "module",
-  "source": "./src/LocalEchoAddon.ts",
-  "exports": "./dist/index.modern.js",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.module.js",
-  "unpkg": "./dist/index.umd.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "src"
+  "contributors": [
+    {
+      "name": "Ioannis Charalampidis",
+      "url": "https://github.com/wavesoft"
+    },
+    {
+      "name": "Kazuhiro Kobatake",
+      "url": "https://github.com/kobakazu0429"
+    },
+    {
+      "name": "Dwight Chesbro",
+      "url": "https://github.com/dchesbro"
+    }
   ],
-  "scripts": {
-    "lint": "npm run lint:eslint && npm run lint:prettier",
-    "build": "microbundle",
-    "dev": "microbundle watch",
-    "test": "jest --silent=false --verbose false",
-    "lint:eslint": "eslint \"./{src,test}/**/*.ts\" --fix",
-    "lint:prettier": "prettier \"./{src,test}/**/*.ts\" --write",
-    "prepublishOnly": "yarn build"
-  },
-  "repository": "git+https://github.com/dchesbro/xterm-addon-local-echo.git",
   "keywords": [
     "echo",
     "local",
     "terminal",
-    "xterm"
-  ],
-  "contributors": [
-    {
-      "name": "Ioannis Charalampidis"
-    },
-    {
-      "name": "kobakazu0429"
-    },
-    {
-      "name": "dchesbro"
-    }
+    "xterm",
+    "xterm.js"
   ],
   "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/dchesbro/xterm-addon-local-echo/issues"
+  "repository": "https://github.com/dchesbro/xterm-addon-local-echo",
+  "exports": "./lib/xterm-addon-local-echo.modern.js",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "main": "./lib/xterm-addon-local-echo.cjs",
+  "module": "./lib/xterm-addon-local-echo.module.js",
+  "scripts": {
+    "build": "microbundle",
+    "dev": "microbundle watch",
+    "lint:eslint": "eslint \"./{src,test}/**/*.ts\" --fix",
+    "lint:prettier": "prettier \"./{src,test}/**/*.ts\" --write",
+    "lint": "npm run lint:eslint && npm run lint:prettier",
+    "prepublishOnly": "yarn build",
+    "test": "jest"
   },
-  "homepage": "https://github.com/dchesbro/xterm-addon-local-echo",
+  "source": "./src/LocalEchoAddon.ts",
+  "type": "module",
+  "types": "./typings/xterm-addon-local-echo.d.ts",
+  "unpkg": "./lib/xterm-addon-local-echo.umd.js",
   "devDependencies": {
-    "@kobakazu0429/eslint-config-typescript": "^2.1.3",
     "@types/jest": "^27.0.1",
     "@types/shell-quote": "^1.7.1",
     "ansi-regex": "^6.0.1",
     "eslint": "^7.32.0",
+    "eslint-config-airbnb": "^19.0.4",
     "jest": "^27.1.0",
     "microbundle": "^0.13.3",
     "shell-quote": "^1.7.2",
