@@ -1,123 +1,103 @@
 import {
-  wordBoundaries,
-  closestLeftBoundary,
-  closestRightBoundary,
-  offsetToColRow,
-  isIncompleteInput,
-  collectAutocompleteCandidates,
+  getColRow,
+  getLineCount,
   getSharedFragment,
-  countLines,
+  getTabSuggestions,
+  getWord,
+  hasIncompleteChars,
 } from "../src/Utils";
-
-/**
- * Test word boundary detection
- */
-test("wordBoundaries()", () => {
-  expect(wordBoundaries("foo bar baz", true)).toEqual([0, 4, 8]);
-  expect(wordBoundaries("foo bar baz", false)).toEqual([3, 7, 11]);
-});
 
 /**
  * Test closest left boundary
  */
 test("closestLeftBoundary()", () => {
-  expect(closestLeftBoundary("foo bar baz", 5)).toEqual(4);
-  expect(closestLeftBoundary("foo bar baz", 2)).toEqual(0);
-  expect(closestLeftBoundary("foo bar baz", 0)).toEqual(0);
+  expect(getWord("foo bar baz", 5, true)).toEqual(4);
+  expect(getWord("foo bar baz", 2, true)).toEqual(0);
+  expect(getWord("foo bar baz", 0, true)).toEqual(0);
 });
 
 /**
  * Test closest right boundary
  */
 test("closestRightBoundary()", () => {
-  expect(closestRightBoundary("foo bar baz", 5)).toEqual(7);
-  expect(closestRightBoundary("foo bar baz", 2)).toEqual(3);
-  expect(closestRightBoundary("foo bar baz", 11)).toEqual(11);
+  expect(getWord("foo bar baz", 5, false)).toEqual(7);
+  expect(getWord("foo bar baz", 2, false)).toEqual(3);
+  expect(getWord("foo bar baz", 11, false)).toEqual(11);
 });
 
 /**
  * Test offset to row/col de-composition
  */
-test("offsetToColRow()", () => {
+test("getColRow()", () => {
   const colSize = 25;
 
-  expect(offsetToColRow("test single line case", 0, colSize)).toEqual({
+  expect(getColRow("test single line case", 0, colSize)).toEqual({
     row: 0,
     col: 0,
   });
-  expect(offsetToColRow("test single line case", 10, colSize)).toEqual({
+  expect(getColRow("test single line case", 10, colSize)).toEqual({
     row: 0,
     col: 10,
   });
-  expect(
-    offsetToColRow("test single line case that wraps", 25, colSize)
-  ).toEqual({
+  expect(getColRow("test single line case that wraps", 25, colSize)).toEqual({
     row: 0,
     col: 25,
   });
-  expect(
-    offsetToColRow("test single line case that wraps", 26, colSize)
-  ).toEqual({
+  expect(getColRow("test single line case that wraps", 26, colSize)).toEqual({
     row: 1,
     col: 0,
   });
 
-  expect(offsetToColRow("test\nmulti\nline case\n", 4, colSize)).toEqual({
+  expect(getColRow("test\nmulti\nline case\n", 4, colSize)).toEqual({
     row: 0,
     col: 4,
   });
-  expect(offsetToColRow("test\nmulti\nline case\n", 5, colSize)).toEqual({
+  expect(getColRow("test\nmulti\nline case\n", 5, colSize)).toEqual({
     row: 1,
     col: 0,
   });
-  expect(offsetToColRow("test\nmulti\nline case\n", 6, colSize)).toEqual({
+  expect(getColRow("test\nmulti\nline case\n", 6, colSize)).toEqual({
     row: 1,
     col: 1,
   });
 
-  expect(
-    offsetToColRow(
-      "test multiple lines that wraps and\nalso\nnew\nlines",
-      25,
-      colSize
-    )
-  ).toEqual({
+  expect(getColRow(
+    "test multiple lines that wraps and\nalso\nnew\nlines",
+    25,
+    colSize
+  )).toEqual({
     row: 0,
     col: 25,
   });
-  expect(
-    offsetToColRow(
-      "test multiple lines that wraps and\nalso\nnew\nlines",
-      26,
-      colSize
-    )
-  ).toEqual({
+  expect(getColRow(
+    "test multiple lines that wraps and\nalso\nnew\nlines",
+    26,
+    colSize
+  )).toEqual({
     row: 1,
     col: 0,
   });
-  expect(
-    offsetToColRow(
-      "test multiple lines that wraps and\nalso\nnew\nlines",
-      35,
-      colSize
-    )
-  ).toEqual({
+  expect(getColRow(
+    "test multiple lines that wraps and\nalso\nnew\nlines",
+    35,
+    colSize
+  )).toEqual({
     row: 2,
     col: 0,
   });
 });
 
-test("countLines()", () => {
-  expect(countLines("abcdef", 10)).toBe(1);
-  expect(countLines("abcdef", 6)).toBe(1);
-  expect(countLines("abcdef", 5)).toBe(2);
-  expect(countLines("abcdef", 3)).toBe(2);
-  expect(countLines("abcdef", 2)).toBe(3);
+test("getLineCount()", () => {
+  expect(getLineCount("abcdef", 10)).toBe(1);
+  expect(getLineCount("abcdef", 6)).toBe(1);
+  expect(getLineCount("abcdef", 5)).toBe(2);
+  expect(getLineCount("abcdef", 3)).toBe(2);
+  expect(getLineCount("abcdef", 2)).toBe(3);
 
-  expect(countLines(" ".repeat(6) + "a", 10)).toBe(1);
+  expect(getLineCount(" ".repeat(6) + "a", 10)).toBe(1);
   // |123456a|
 
-  expect(countLines(" ".repeat(6) + "a", 5)).toBe(2);
+  expect(getLineCount(" ".repeat(6) + "a", 5)).toBe(2);
   // |12345|
   // |6a|
 
@@ -136,8 +116,8 @@ test("countLines()", () => {
 
   const input = `default ${ansiColor.red}red_text ${ansiColor.blue}blue_text ${ansiColor.reset}default`;
   const inputWithoutColor = `default red_text blue_text default`;
-  expect(countLines(input, 100)).toBe(1);
-  expect(countLines(input, 10)).toBe(Math.ceil(inputWithoutColor.length / 10));
+  expect(getLineCount(input, 100)).toBe(1);
+  expect(getLineCount(input, 10)).toBe(Math.ceil(inputWithoutColor.length / 10));
 });
 
 /**
@@ -145,41 +125,41 @@ test("countLines()", () => {
  */
 test("isIncompleteInput()", () => {
   // Empty input is considered completed
-  expect(isIncompleteInput("")).toEqual(false);
-  expect(isIncompleteInput("   ")).toEqual(false);
+  expect(hasIncompleteChars("")).toEqual(false);
+  expect(hasIncompleteChars("   ")).toEqual(false);
 
   // Normal cases
-  expect(isIncompleteInput("some foo bar")).toEqual(false);
-  expect(isIncompleteInput(`some "double quotes"`)).toEqual(false);
-  expect(isIncompleteInput(`some 'single quotes'`)).toEqual(false);
-  expect(isIncompleteInput(`some 'single "double" quotes'`)).toEqual(false);
-  expect(isIncompleteInput(`some && command`)).toEqual(false);
+  expect(hasIncompleteChars("some foo bar")).toEqual(false);
+  expect(hasIncompleteChars(`some "double quotes"`)).toEqual(false);
+  expect(hasIncompleteChars(`some 'single quotes'`)).toEqual(false);
+  expect(hasIncompleteChars(`some 'single "double" quotes'`)).toEqual(false);
+  expect(hasIncompleteChars(`some && command`)).toEqual(false);
 
   // Incomplete boolean ops
-  expect(isIncompleteInput(`some &&`)).toEqual(true);
-  expect(isIncompleteInput(`some &&    `)).toEqual(true);
-  expect(isIncompleteInput(`some ||`)).toEqual(true);
-  expect(isIncompleteInput(`some ||    `)).toEqual(true);
-  expect(isIncompleteInput(`some && foo ||`)).toEqual(true);
-  expect(isIncompleteInput(`some && foo || &&`)).toEqual(true);
+  expect(hasIncompleteChars(`some &&`)).toEqual(true);
+  expect(hasIncompleteChars(`some &&    `)).toEqual(true);
+  expect(hasIncompleteChars(`some ||`)).toEqual(true);
+  expect(hasIncompleteChars(`some ||    `)).toEqual(true);
+  expect(hasIncompleteChars(`some && foo ||`)).toEqual(true);
+  expect(hasIncompleteChars(`some && foo || &&`)).toEqual(true);
 
   // Incomplete pipe
-  expect(isIncompleteInput(`some |`)).toEqual(true);
-  expect(isIncompleteInput(`some | `)).toEqual(true);
+  expect(hasIncompleteChars(`some |`)).toEqual(true);
+  expect(hasIncompleteChars(`some | `)).toEqual(true);
 
   // Incomplete quote
-  expect(isIncompleteInput(`some "command that continues`)).toEqual(true);
-  expect(isIncompleteInput(`some "`)).toEqual(true);
-  expect(isIncompleteInput(`some "  `)).toEqual(true);
-  expect(isIncompleteInput(`some 'same thing with single`)).toEqual(true);
-  expect(isIncompleteInput(`some '`)).toEqual(true);
-  expect(isIncompleteInput(`some '   `)).toEqual(true);
+  expect(hasIncompleteChars(`some "command that continues`)).toEqual(true);
+  expect(hasIncompleteChars(`some "`)).toEqual(true);
+  expect(hasIncompleteChars(`some "  `)).toEqual(true);
+  expect(hasIncompleteChars(`some 'same thing with single`)).toEqual(true);
+  expect(hasIncompleteChars(`some '`)).toEqual(true);
+  expect(hasIncompleteChars(`some '   `)).toEqual(true);
 });
 
 /**
  * Tests if isIncompleteInput correctly detects various cases
  */
-test("collectAutocompleteCandidates()", () => {
+test("getTabSuggestions()", () => {
   const allCb = () => {
     return ["a", "ab", "abc"];
   };
@@ -202,7 +182,7 @@ test("collectAutocompleteCandidates()", () => {
     },
   ];
 
-  expect(collectAutocompleteCandidates(cbList, "")).toEqual([
+  expect(getTabSuggestions(cbList, "")).toEqual([
     "a",
     "ab",
     "abc",
@@ -210,14 +190,14 @@ test("collectAutocompleteCandidates()", () => {
     "cd",
     "cde",
   ]);
-  expect(collectAutocompleteCandidates(cbList, "a")).toEqual([
+  expect(getTabSuggestions(cbList, "a")).toEqual([
     "a",
     "ab",
     "abc",
   ]);
-  expect(collectAutocompleteCandidates(cbList, "ab")).toEqual(["ab", "abc"]);
+  expect(getTabSuggestions(cbList, "ab")).toEqual(["ab", "abc"]);
 
-  expect(collectAutocompleteCandidates(cbList, "ab ")).toEqual([
+  expect(getTabSuggestions(cbList, "ab ")).toEqual([
     "a",
     "ab",
     "abc",
@@ -228,7 +208,7 @@ test("collectAutocompleteCandidates()", () => {
     "cd",
     "cde",
   ]);
-  expect(collectAutocompleteCandidates(cbList, "ab b")).toEqual([
+  expect(getTabSuggestions(cbList, "ab b")).toEqual([
     "b",
     "bc",
     "bcd",
