@@ -24,13 +24,13 @@
   ],
   "license": "Apache-2.0",
   "repository": "https://github.com/dchesbro/xterm-addon-local-echo",
-  "exports": "./lib/xterm-addon-local-echo.modern.js",
+  "exports": "./dist/xterm-addon-local-echo.modern.js",
   "files": [
     "lib",
     "src"
   ],
-  "main": "./lib/xterm-addon-local-echo.cjs",
-  "module": "./lib/xterm-addon-local-echo.module.js",
+  "main": "./dist/xterm-addon-local-echo.cjs",
+  "module": "./dist/xterm-addon-local-echo.module.js",
   "scripts": {
     "build": "microbundle",
     "dev": "microbundle watch",
@@ -40,7 +40,7 @@
   "source": "./src/LocalEchoAddon.ts",
   "type": "module",
   "types": "./typings/xterm-addon-local-echo.d.ts",
-  "unpkg": "./lib/xterm-addon-local-echo.umd.js",
+  "unpkg": "./dist/xterm-addon-local-echo.umd.js",
   "devDependencies": {
     "@types/jest": "^27.0.1",
     "@types/shell-quote": "^1.7.1",
