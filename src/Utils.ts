@@ -157,26 +157,30 @@ export function getWord(input: string, offset: number, rtl: boolean) {
  */
 export function hasIncompleteChars(input: string) {
 
-  // Has open single quote.
-  if ((input.match(/'/g) || []).length % 2 !== 0) {
-    return true;
-  }
+  // If input not empty, check for incomplete characters.
+  if (input.trim()) {
 
-  // Has open double quote.
-  if ((input.match(/"/g) || []).length % 2 !== 0) {
-    return true;
-  }
+    // Has open single quote.
+    if ((input.match(/'/g) || []).length % 2 !== 0) {
+      return true;
+    }
 
-  // Has boolean or pipe operator.
-  let bools = input.split(/(\|\||\||&&)/g);
+    // Has open double quote.
+    if ((input.match(/"/g) || []).length % 2 !== 0) {
+      return true;
+    }
 
-  if (bools.pop()?.trim() === '') {
-    return true;
-  }
+    // Has boolean or pipe operator.
+    let bools = input.split(/(\|\||\||&&)/g);
 
-  // Has trailing slash.
-  if (input.endsWith('\\') && !input.endsWith('\\\\')) {
-    return true;
+    if (bools.pop()?.trim() === '') {
+      return true;
+    }
+
+    // Has trailing slash.
+    if (input.endsWith('\\') && !input.endsWith('\\\\')) {
+      return true;
+    }
   }
 
   return false;
