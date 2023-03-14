@@ -3,6 +3,8 @@ module.exports =
   ({
     testMatch: ["**/*.test.ts"],
     transform: {
-      "^.+\\.ts$": "ts-jest",
+      "^.+\\.(js|jsx)$": "babel-jest",
+      "^.+\\.(ts)$": "ts-jest",
     },
+    transformIgnorePatterns: ['/node_modules/(?!(ansi-regex)/)'],
   });
