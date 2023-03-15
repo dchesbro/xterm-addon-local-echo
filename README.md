@@ -111,7 +111,7 @@ localEcho.read("$ ", "> ")
 Return a promise that resolves when a user inputs a single character -- can be active in addition to `read()` and will resolve before it. For example:
 
 ```js
-localEcho.readChar("Do you wish to see all possibilities? (y/n)")
+localEcho.readChar("Do you wish to see all possibilities? (y/n) ")
     .then((char) => {
         if (char === 'y' || char === 'Y') {
             localEcho.println("All the possibilities!");
