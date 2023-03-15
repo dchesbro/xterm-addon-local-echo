@@ -265,6 +265,35 @@ export class LocalEchoAddon implements ITerminalAddon {
   }
 
   /**
+   * Complete current input, call defined callback, and display prompt.
+   * 
+   * @param callback Handler function or other data.
+   */
+  private applyPromptComplete(callback: any) {
+    const cursor = this.cursor;
+
+    this.setCursor(this.input.length);
+    this.terminal.write('\r\n');
+
+    const resume = () => {
+      this.cursor = cursor;
+
+      this.setInput(this.input);
+    };
+
+    const promise = callback();
+
+    // If callback doesn't return a promise, resume...
+    if (promise === null) {
+      resume();
+
+    // ...else, wait for promise to resolve and then resume.
+    } else {
+      promise.then(resume);
+    }
+  }
+
+  /**
    * Returns adjusted offset w/ respect to defined input and prompt strings.
    * 
    * @param input  Input string.
@@ -302,144 +331,6 @@ export class LocalEchoAddon implements ITerminalAddon {
   }
 
   /**
-   * Set defined input w/ previous input or replace previous input.
-   * 
-   * @param input      Input string.
-   * @param clearInput Clear current input before writing.
-   */
-  private async setInput(input: string, clearInput = true) {
-
-    // Clear current input?
-    if (clearInput) {
-      this.clearInput();
-    }
-
-    // Make sure cursor offset isn't outside of input length.
-    if (this.cursor > input.length) {
-      this.cursor = input.length;
-    }
-
-    const cursor = this.applyPromptOffset(input, this.cursor);
-    const prompt = this.applyPrompt(input);
-
-    // Print input to terminal.
-    this.print(prompt);
-
-    const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
-    const trailingChars = prompt.substring(cursor).length;
-
-    // If trailing characters found, check if they wrap...
-    if (trailingChars) {
-      const offset = cursor % this.terminalSize.cols;
-
-      if ((offset + trailingChars) === this.terminalSize.cols) {
-        this.terminal.write('\x1B[E');
-      }
-
-    // ...else, maybe wrap to newline.
-    } else {
-      if (row !== 0 && col === 0) {
-        this.terminal.write('\x1B[E');
-      }
-    }
-
-    const lines = getLineCount(prompt, this.terminalSize.cols);
-    const moveUp = lines - (row + 1);
-
-    // Move cursor to beginning of current row then right.
-    this.terminal.write('\r');
-
-    for (let i = 0; i < moveUp; i++) {
-      this.terminal.write('\x1B[F');
-    }
-
-    for (let i = 0; i < col; i++) {
-      this.terminal.write('\x1B[C');
-    }
-
-    // Set input.
-    this.input = input;
-  }
-
-
-
-  /**
-   * This function completes the current input, calls the given callback
-   * and then re-displays the prompt.
-   */
-  private applyPromptComplete(callback: any) {
-    const cursor = this.cursor;
-
-    // Complete input
-    this.setCursor(this.input.length);
-    this.terminal.write('\r\n');
-
-    // Prepare a function that will resume prompt
-    const resume = () => {
-      this.cursor = cursor;
-      this.setInput(this.input);
-    };
-
-    // Call the given callback to echo something, and if there is a promise
-    // returned, wait for the resolution before resuming prompt.
-    const ret = callback();
-    if (ret == null) {
-      resume();
-    } else {
-      ret.then(resume);
-    }
-  }
-
-  /**
-   * Set the new cursor position, as an offset on the input string
-   *
-   * This function:
-   * - Calculates the previous and current
-   */
-  private setCursor(newCursor: number) {
-    if (newCursor < 0) newCursor = 0;
-    if (newCursor > this.input.length) newCursor = this.input.length;
-
-    // Apply prompt formatting to get the visual status of the display
-    const inputWithPrompt = this.applyPrompt(this.input);
-
-    // Estimate previous cursor position
-    const prevPromptOffset = this.applyPromptOffset(this.input, this.cursor);
-    const { col: prevCol, row: prevRow } = getColRow(
-      inputWithPrompt,
-      prevPromptOffset,
-      this.terminalSize.cols
-    );
-
-    // Estimate next cursor position
-    const newPromptOffset = this.applyPromptOffset(this.input, newCursor);
-    const { col: newCol, row: newRow } = getColRow(
-      inputWithPrompt,
-      newPromptOffset,
-      this.terminalSize.cols
-    );
-
-    // Adjust vertically
-    if (newRow > prevRow) {
-      for (let i = prevRow; i < newRow; ++i) this.terminal.write("\x1B[B");
-    } else {
-      for (let i = newRow; i < prevRow; ++i) this.terminal.write("\x1B[A");
-    }
-
-    // Adjust horizontally
-    if (newCol > prevCol) {
-      for (let i = prevCol; i < newCol; ++i) this.terminal.write("\x1B[C");
-    } else {
-      for (let i = newCol; i < prevCol; ++i) this.terminal.write("\x1B[D");
-    }
-
-    // Set new offset
-    this.cursor = newCursor;
-  }
-
-
-
-  /**
    * Insert character(s) at current cursor offset.
    * 
    * @param input Input string.
@@ -447,9 +338,7 @@ export class LocalEchoAddon implements ITerminalAddon {
   private handleCursorInsert(input: string) {
     this.cursor += input.length;
 
-    const insert = this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor);
-
-    this.setInput(insert);
+    this.setInput(this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor));
   }
   
   /**
@@ -484,69 +373,12 @@ export class LocalEchoAddon implements ITerminalAddon {
     if (bksp && this.cursor > 0) {
       this.cursor -= 1;
     }
-
-    const erase = this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1);
     
-    this.setInput(erase);
-  }
-
-
-
-  /**
-   * Handle input completion
-   */
-  private handleReadComplete() {
-    if (this.history) {
-      this.history.push(this.input);
-    }
-    if (this.activePrompt) {
-      this.activePrompt.resolve(this.input);
-      this.activePrompt = null;
-    }
-    this.terminal.write("\r\n");
-    this.active = false;
+    this.setInput(this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1));
   }
 
   /**
-   * Handle terminal resize
-   *
-   * This function clears the prompt using the previous configuration,
-   * updates the cached terminal size information and then re-renders the
-   * input. This leads (most of the times) into a better formatted input.
-   */
-  private handleTermResize(size: TerminalSize) {
-    const { cols, rows } = size;
-    
-    this.clearInput();
-    this.terminalSize = { cols, rows };
-    this.setInput(this.input, false);
-  }
-
-  /**
-   * Handle terminal input
-   */
-  private handleTermData(data: string) {
-    if (!this.active) return;
-
-    // If we have an active character prompt, satisfy it in priority
-    if (this.activePromptChar != null) {
-      this.activePromptChar.resolve(data);
-      this.activePromptChar = null;
-      this.terminal.write("\r\n");
-      return;
-    }
-
-    // If this looks like a pasted input, expand it
-    if (data.length > 3 && data.charCodeAt(0) !== 0x1b) {
-      const normData = data.replace(/[\r\n]+/g, "\r");
-      Array.from(normData).forEach((c) => this.handleData(c));
-    } else {
-      this.handleData(data);
-    }
-  }
-
-  /**
-   * Handle data input from terminal based on key press.
+   * Handle input data from terminal based on key press.
    * 
    * @param data Key press data from terminal.
    */
@@ -740,5 +572,192 @@ export class LocalEchoAddon implements ITerminalAddon {
     } else {
       this.handleCursorInsert(data);
     }
+  }
+
+  /**
+   * Handle completed read prompts.
+   */
+  private handleReadComplete() {
+    if (this.history) {
+      this.history.push(this.input);
+    }
+
+    if (this.activePrompt) {
+      this.activePrompt.resolve(this.input);
+
+      this.activePrompt = null;
+    }
+
+    this.terminal.write("\r\n");
+
+    this.active = false;
+  }
+
+  /**
+   * Handle terminal input.
+   * 
+   * @param input Input string.
+   */
+  private handleTermData(input: string) {
+    if (!this.active) {
+      return;
+    }
+
+    // If active character prompt found, resolve it.
+    if (this.activePromptChar !== null) {
+      this.activePromptChar.resolve(input);
+
+      this.activePromptChar = null;
+
+      return this.terminal.write("\r\n");
+    }
+
+    // If pasted input, normalize and process each character...
+    if (input.length > 3 && input.charCodeAt(0) !== 0x1b) {
+      const pasted = input.replace(/[\r\n]+/g, "\r");
+
+      Array.from(pasted).forEach((char) => this.handleData(char));
+
+    // ...else, process input data.
+    } else {
+      this.handleData(input);
+    }
+  }
+
+  /**
+   * Clear the current prompt, update terminal size, and re-render prompt.
+   * 
+   * @param size Terminal size object.
+   */
+  private handleTermResize(size: TerminalSize) {
+    this.clearInput();
+
+    this.terminalSize = size;
+
+    this.setInput(this.input, false);
+  }
+
+  /**
+   * Set new cursor position as an offset of the current input string.
+   * 
+   * @param offset Input cursor offset.
+   */
+  private setCursor(offset: number) {
+
+    // Make sure cursor offset isn't outside input length.
+    if (offset < 0) {
+      offset = 0;
+    }
+
+    if (offset > this.input.length) {
+      offset = this.input.length;
+    }
+
+    const prompt = this.applyPrompt(this.input);
+    
+    // Get previous cursor position.
+    const cursorPrev = this.applyPromptOffset(this.input, this.cursor);
+    const { col: colPrev, row: rowPrev } = getColRow(
+      prompt,
+      cursorPrev,
+      this.terminalSize.cols
+    );
+
+    // Get new cursor position.
+    const cursorNew = this.applyPromptOffset(this.input, offset);
+    const { col: colNew, row: rowNew } = getColRow(
+      prompt,
+      cursorNew,
+      this.terminalSize.cols
+    );
+
+    // If new number of rows greater than previous number, move down...
+    if (rowNew > rowPrev) {
+      for (let i = rowPrev; i < rowNew; ++i) {
+        this.terminal.write("\x1B[B");
+      }
+    
+    // ...else, move up.
+    } else {
+      for (let i = rowNew; i < rowPrev; ++i) {
+        this.terminal.write("\x1B[A");
+      }
+    }
+
+    // If new number of columns greater than previous number, move right...
+    if (colNew > colPrev) {
+      for (let i = colPrev; i < colNew; ++i) {
+        this.terminal.write("\x1B[C");
+      }
+
+    // ...else, move left.
+    } else {
+      for (let i = colNew; i < colPrev; ++i) {
+        this.terminal.write("\x1B[D");
+      }
+    }
+
+    // Set offset.
+    this.cursor = offset;
+  }
+
+  /**
+   * Set defined input w/ previous input or replace previous input.
+   * 
+   * @param input      Input string.
+   * @param clearInput Clear current input before writing.
+   */
+  private async setInput(input: string, clearInput = true) {
+
+    // Clear current input?
+    if (clearInput) {
+      this.clearInput();
+    }
+
+    // Make sure cursor offset isn't outside input length.
+    if (this.cursor > input.length) {
+      this.cursor = input.length;
+    }
+
+    const cursor = this.applyPromptOffset(input, this.cursor);
+    const prompt = this.applyPrompt(input);
+
+    // Print input to terminal.
+    this.print(prompt);
+
+    const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
+    const trailingChars = prompt.substring(cursor).length;
+
+    // If trailing characters found, check if they wrap...
+    if (trailingChars) {
+      const offset = cursor % this.terminalSize.cols;
+
+      if ((offset + trailingChars) === this.terminalSize.cols) {
+        this.terminal.write('\x1B[E');
+      }
+
+    // ...else, maybe wrap to newline.
+    } else {
+      if (row !== 0 && col === 0) {
+        this.terminal.write('\x1B[E');
+      }
+    }
+
+    const lines = getLineCount(prompt, this.terminalSize.cols);
+    const moveUp = lines - (row + 1);
+
+    // Move cursor to beginning of current row then right.
+    this.terminal.write('\r');
+
+    for (let i = 0; i < moveUp; i++) {
+      this.terminal.write('\x1B[F');
+    }
+
+    for (let i = 0; i < col; i++) {
+      this.terminal.write('\x1B[C');
+    }
+
+    // Set input.
+    this.input = input;
   }
 }

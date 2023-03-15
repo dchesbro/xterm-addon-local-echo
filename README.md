@@ -144,7 +144,6 @@ Print an array of string as an inline or numbered list. For example:
 
 ```js
 localEcho.printlsInline(["First", "Second", "Third"]);
-
 localEcho.printlsNumber(["First", "Second", "Third"]);
 ```
 
