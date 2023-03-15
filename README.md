@@ -1,22 +1,23 @@
-# xterm-addon-local-echo 
+# 📣 xterm-addon-local-echo 
 
-This repository is forked from the TypeScript port of [[wavesoft/local-echo](https://github.com/wavesoft/local-echo)] by  [[kobakazu0429/local-echo](https://github.com/kobakazu0429/local-echo)].
+This repository is forked from the TypeScript port of [wavesoft/local-echo](https://github.com/wavesoft/local-echo) by  [kobakazu0429](https://github.com/kobakazu0429/local-echo).
 
-> A fully functional local echo controller for xterm.js
+> A fully(~ish) functional local echo controller for `xterm.js`.
 
-You will be surprised how difficult it is to implement a fully functional local-echo controller for [xterm.js](https://github.com/xtermjs/xterm.js) (or any other terminal emulator). This project takes this burden off your hands.
+You'd be surprised how difficult it is to implement a fully(~ish) functional local echo controller for [`xterm.js`](https://github.com/xtermjs/xterm.js), or any other terminal emulator for that matter. This project takes much of that burden off your hands!
 
 ### Features
 
-The local echo controller tries to replicate most of the bash-like user experience primitives, such as:
+This local echo controller tries to replicate most of the bash-like user experience primitives, such as:
+This local echo controller tries to replicate many bash-like features, including:
 
-- _Arrow navigation_: Use `left` and `right` arrows to navigate in your input
-- _Word-boundary navigation_: Use `alt+left` and `alt+right` to jump between words
-- _Word-boundary deletion_: Use `alt+backspace` to delete a word
+- ~~**Arrow navigation:** Use `left` and `right` arrow keys to navigate in your input.~~ (Disabled to prevent multi-line rendering bugs)
+- ~~**Word boundary navigation:** Use `alt+left` and `alt+right` to jump between words.~~ (Disabled to prevent multi-line rendering bugs)
+- **Word boundary deletion:** Use `alt+backspace` to delete a words.
 - _Multi-line continuation_: Break command to multiple lines if they contain incomplete quotation marks, boolean operators (`&&` or `||`), pipe operator (`|`), or new-line escape sequence (`\`).
-- _Full-navigation on multi-line command_: You are not limited only on the line you are editing, you can navigate and edit all of your lines.
-- _Local History_: Just like bash, access the commands you previously typed using the `up` and `down` arrows.
-- _Tab-Completion_: Provides support for registering your own tab-completion callbacks.
+- _Full navigation on multi-line command_: You are not limited only on the line you are editing, you can navigate and edit all of your lines.
+- **History:** Access the commands you previously typed using the `up` and `down` arrow keys.
+- **Tab completion:** Auto-complete commands using the `tab` key with support for registering custom tab completion callback functions.
 
 ## Demo
 
