@@ -20,7 +20,7 @@ This local echo controller tries to replicate many bash-like features, including
 - **Paste text:** Paste commands or other text using `cmd+v`.
 - **Tab completion:** Auto-complete commands using the `tab` key with support for adding user defined tab completion callback functions.
 
-**Note:** Crossed out features are implemented, but currently disabled because of bugs related to cursor position on multi-line commands.
+**Note:** Crossed out features are completely or partially implemented, but disabled because of bugs related to cursor position on multi-line commands.
 
 ## Usage
 
@@ -40,7 +40,7 @@ This local echo controller tries to replicate many bash-like features, including
     yarn add @dchesbro/xterm-addon-local-echo
     ```
 
-2. Import and initialize like so:
+2. Import and initialize:
 
     ```js
     import { LocalEchoAddon } from "@dchesbro/xterm-addon-local-echo";
