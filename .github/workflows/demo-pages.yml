@@ -1,5 +1,4 @@
-name: CI
-
+name: Update demo and deloy pages
 on: [push, pull_request]
 
 jobs:
@@ -16,7 +15,7 @@ jobs:
       - run: yarn build
       - name: Copy for demo
         run: cp ./dist/xterm-addon-local-echo.umd.js ./demo
-      - name: Deploy
+      - name: Deploy to GitHub pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
