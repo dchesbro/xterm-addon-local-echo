@@ -51,13 +51,13 @@ This local echo controller tries to replicate many bash-like features, including
     const term = new Terminal();
 
     // Add user defined tab complete callback functions.
-    localEcho.addAutocompleteHandler((index) => {
+    localEcho.addTabCompleteHandler((index) => {
       if (index !== 0) return [];
 
       return ["bash", "chmod", "chown", "cp", "ls", "ps"];
     });
 
-    localEcho.addAutocompleteHandler((index) => {
+    localEcho.addTabCompleteHandler((index) => {
       if (index === 0) return [];
       
       return [".git", ".gitignore", "some-file", "some-other-file"];
@@ -98,7 +98,7 @@ The add-on constructor accepts an `xterm.js` instance as the first argument, and
 
 ### `.read(ps1, ps2)`
 
-Return promise that resolves when a complete input is sent.
+Return promise that resolves when a complete input is sent. For example:
 
 ```js
 localEcho.read("$ ", "> ")
@@ -108,7 +108,7 @@ localEcho.read("$ ", "> ")
 
 ### `.readChar(ps1)`
 
-Return a promise that resolves when a user inputs a single character -- can be active in addition to `read()` and will resolve before it.
+Return a promise that resolves when a user inputs a single character -- can be active in addition to `read()` and will resolve before it. For example:
 
 ```js
 localEcho.readChar("Do you wish to see all possibilities? (y/n)")
@@ -122,7 +122,7 @@ localEcho.readChar("Do you wish to see all possibilities? (y/n)")
 
 ### `.abortRead(reason)`
 
-Abort read operation(s), if any are pending.
+Abort read operation(s), if any are pending. For example:
 
 ```js
 localEcho.read("$ ", "> ")
@@ -148,7 +148,7 @@ localEcho.printlsInline(["First", "Second", "Third"]);
 localEcho.printlsNumber(["First", "Second", "Third"]);
 ```
 
-Will display the following formatted lists:
+Will output the following formatted lists:
 
 ```
 First    Second   Third
@@ -175,20 +175,27 @@ Tab complete callback functions should return an array of suggestions for the cu
 
 ```js
 // Suggestions for commands.
-localEcho.addAutocompleteHandler((index) => {
+const suggestCommands = (index) => {
     if (index !== 0) return [];
 
     return ["bash", "chmod", "chown", "cp", "ls", "ps"];
-});
+};
 
 // Suggestions for known files.
-localEcho.addAutocompleteHandler((index) => {
+const suggestFiles = (index) => {
     if (index === 0) return [];
     
     return [".git", ".gitignore", "some-file", "some-other-file"];
-});
+};
+
+localEcho.addTabCompleteHandler(suggestCommands);
+localEcho.addTabCompleteHandler(suggestFiles);
 ```
 
 ### `.removeTabCompleteHandler(callback)`
 
-Remove a previously added tab complete handler function.
+Remove a previously added tab complete handler function. For example:
+
+```js
+localEcho.removeTabCompleteHandler(suggestCommands);
+```
