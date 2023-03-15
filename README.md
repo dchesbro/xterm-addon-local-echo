@@ -30,15 +30,15 @@ This local echo controller tries to replicate many bash-like features, including
 
 ### `npm`
 
-    ```sh
-    npm install @dchesbro/xterm-addon-local-echo
-    ```
+```sh
+npm install @dchesbro/xterm-addon-local-echo
+```
 
 ### `yarn`
 
-    ```sh
-    yarn add @dchesbro/xterm-addon-local-echo
-    ```
+```sh
+yarn add @dchesbro/xterm-addon-local-echo
+```
 
 2. Import and initialize:
 
@@ -83,54 +83,54 @@ This local echo controller tries to replicate many bash-like features, including
 
 The add-on constructor accepts an `xterm.js` instance as the first argument, and an object with settings for all other options as the second argument. Options are:
 
-    ```js
-    {
-        // The maximum number of items to save in the command history.
-        historySize: 10,
+```js
+{
+    // The maximum number of items to save in the command history.
+    historySize: 10,
 
-        // Enable support for incomplete commands.
-        incompleteEnabled: true,
+    // Enable support for incomplete commands.
+    incompleteEnabled: true,
 
-        // The maximum number of tab complete suggestions to display before prompting the user.
-        tabCompleteSize: 10,
-    }
-    ```
+    // The maximum number of tab complete suggestions to display before prompting the user.
+    tabCompleteSize: 10,
+}
+```
 
 ### `.read(ps1, ps2)`
 
 Return promise that resolves when a complete input is sent. For example:
 
-    ```js
-    localEcho.read("$ ", "> ")
-        .then((input) => localEcho.println("Local echo: " + input))
-        .catch((error) => localEcho.println("Error: " + error));
-    ```
+```js
+localEcho.read("$ ", "> ")
+    .then((input) => localEcho.println("Local echo: " + input))
+    .catch((error) => localEcho.println("Error: " + error));
+```
 
 ### `.readChar(ps1)`
 
 Return a promise that resolves when a user inputs a single character -- can be active in addition to `read()` and will resolve before it. For example:
 
-    ```js
-    localEcho.readChar("Do you wish to see all possibilities? (y/n) ")
-        .then((char) => {
-            if (char === 'y' || char === 'Y') {
-                localEcho.println("All the possibilities!");
-            }
-        })
-        .catch((error) => localEcho.println("Error: " + error));
-    ```
+```js
+localEcho.readChar("Do you wish to see all possibilities? (y/n) ")
+    .then((char) => {
+        if (char === 'y' || char === 'Y') {
+            localEcho.println("All the possibilities!");
+        }
+    })
+    .catch((error) => localEcho.println("Error: " + error));
+```
 
 ### `.abortRead(reason)`
 
 Abort read operation(s), if any are pending. For example:
 
-    ```js
-    localEcho.read("$ ", "> ")
-        .then((input) => localEcho.println("Local echo: " + input))
-        .catch((error) => localEcho.println("Error: " + error));
+```js
+localEcho.read("$ ", "> ")
+    .then((input) => localEcho.println("Local echo: " + input))
+    .catch((error) => localEcho.println("Error: " + error));
 
-    localEcho.abortRead("Reason the operation was aborted.");
-    ```
+localEcho.abortRead("Reason the operation was aborted.");
+```
 
 ### `.print(output)`
 ### `.println(output)`
@@ -142,60 +142,60 @@ Print string (with newline) and format newline characters.
 
 Print an array of string as an inline or numbered list. For example:
 
-    ```js
-    localEcho.printlsInline(["First", "Second", "Third"]);
+```js
+localEcho.printlsInline(["First", "Second", "Third"]);
 
-    localEcho.printlsNumber(["First", "Second", "Third"]);
-    ```
+localEcho.printlsNumber(["First", "Second", "Third"]);
+```
 
 Will output the following formatted lists:
 
-    ```
-    First    Second   Third
+```
+First    Second   Third
 
-    1  First
-    2  Second
-    3  Third
-    ```
+1  First
+2  Second
+3  Third
+```
 
 ### `.addTabCompleteHandler(callback, [args...])`
 
 Add a tab complete handler function. Callback functions have the following signature:
 
-    ```js
-    /**
-     * @param index     Input fragment used to match tab complete suggestions.
-     * @param fragments An array with all the fragments from the current input string.
-     * @param args...   One or more additional arguments.
-     */
-    function (index: Number, fragments: Array[String], [args...]): Array[String] 
-    ```
+```js
+/**
+ * @param index     Input fragment used to match tab complete suggestions.
+ * @param fragments An array with all the fragments from the current input string.
+ * @param args...   One or more additional arguments.
+ */
+function (index: Number, fragments: Array[String], [args...]): Array[String] 
+```
 
 Tab complete callback functions should return an array of suggestions for the current input fragment. For example:
 
-    ```js
-    // Suggestions for commands.
-    const suggestCommands = (index) => {
-        if (index !== 0) return [];
+```js
+// Suggestions for commands.
+const suggestCommands = (index) => {
+    if (index !== 0) return [];
 
-        return ["bash", "chmod", "chown", "cp", "ls", "ps"];
-    };
+    return ["bash", "chmod", "chown", "cp", "ls", "ps"];
+};
 
-    // Suggestions for known files.
-    const suggestFiles = (index) => {
-        if (index === 0) return [];
-        
-        return [".git", ".gitignore", "some-file", "some-other-file"];
-    };
+// Suggestions for known files.
+const suggestFiles = (index) => {
+    if (index === 0) return [];
+    
+    return [".git", ".gitignore", "some-file", "some-other-file"];
+};
 
-    localEcho.addTabCompleteHandler(suggestCommands);
-    localEcho.addTabCompleteHandler(suggestFiles);
-    ```
+localEcho.addTabCompleteHandler(suggestCommands);
+localEcho.addTabCompleteHandler(suggestFiles);
+```
 
 ### `.removeTabCompleteHandler(callback)`
 
 Remove a previously added tab complete handler function. For example:
 
-    ```js
-    localEcho.removeTabCompleteHandler(suggestCommands);
-    ```
+```js
+localEcho.removeTabCompleteHandler(suggestCommands);
+```
