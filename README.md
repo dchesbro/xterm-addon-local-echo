@@ -8,70 +8,77 @@ You'd be surprised how difficult it is to implement a fully(~ish) functional loc
 
 ### Features
 
-This local echo controller tries to replicate most of the bash-like user experience primitives, such as:
 This local echo controller tries to replicate many bash-like features, including:
 
-- ~~**Arrow navigation:** Use `left` and `right` arrow keys to navigate in your input.~~ (Disabled to prevent multi-line rendering bugs)
-- ~~**Word boundary navigation:** Use `alt+left` and `alt+right` to jump between words.~~ (Disabled to prevent multi-line rendering bugs)
+- ~~**Arrow navigation:** Use `left` and `right` arrow keys to navigate in your input.~~
+- ~~**Word boundary navigation:** Use `alt+left` and `alt+right` to navigate between words.~~
+- ~~**Line navigation:** Use `alt+e` and `alt+h` to navigation to the beginning or end of the current line.~~
 - **Word boundary deletion:** Use `alt+backspace` to delete a words.
-- _Multi-line continuation_: Break command to multiple lines if they contain incomplete quotation marks, boolean operators (`&&` or `||`), pipe operator (`|`), or new-line escape sequence (`\`).
-- _Full navigation on multi-line command_: You are not limited only on the line you are editing, you can navigate and edit all of your lines.
-- **History:** Access the commands you previously typed using the `up` and `down` arrow keys.
-- **Tab completion:** Auto-complete commands using the `tab` key with support for registering custom tab completion callback functions.
+- **Multi-line continuation:** Break commands into multiple lines if they contain incomplete quotation marks, boolean operators (`&&` or `||`), pipe operators (`|`), or new-line escape sequence (`\`).
+- **Full navigation for multi-line commands:** Navigate within and edit all lines of the multi-line commands.
+- **History:** Access previous commands using the `up` and `down` arrow keys.
+- **Paste commands:** Paste commands or other text using `cmd+v`.
+- **Tab completion:** Auto-complete commands using the `tab` key with support for adding user defined tab completion callback functions.
 
 ## Demo
 
-check it
+To-do.
 
-[https://kobakazu0429.github.io/local-echo/](https://kobakazu0429.github.io/local-echo/)
+[https://dchesbro.github.io/xterm-addon-local-echo/](https://dchesbro.github.io/xterm-addon-local-echo/)
 
 ## Usage
 
-### As ES6 Module
+### As an ES6 Module
 
-1. Install it using `npm`:
+1. Install it using your preferred package manager:
 
-    ```sh
-    npm install --save @kobakazu0429/xterm-local-echo
-    ```
-
-    Or yarn:
+    `npm`
 
     ```sh
-    yarn add @kobakazu0429/xterm-local-echo
+    npm install @dchesbro/xterm-addon-local-echo
     ```
 
-2. Use it like so:
+    `yarn`
+
+    ```sh
+    yarn add @dchesbro/xterm-addon-local-echo
+    ```
+
+2. Import and initialize like so:
 
     ```js
+    import { LocalEchoAddon } from "@dchesbro/xterm-addon-local-echo";
     import { Terminal } from "xterm";
-    import { LocalEchoAddon } from "@kobakazu0429/xterm-local-echo";
 
-    const term = new Terminal();
-    term.open(document.getElementById("terminal"));
-
-    // Create a local controller
+    // Create addon and terminal.
     const localEcho = new LocalEchoAddon();
-    term.loadAddon(localEcho);
+    const term = new Terminal();
 
-    // Create some auto-comple handlers
+    // Add user defined tab complete callback functions.
     localEcho.addAutocompleteHandler((index) => {
       if (index !== 0) return [];
-      return ["bash", "ls", "ps", "cp", "chown", "chmod"];
-    });
-    localEcho.addAutocompleteHandler((index) => {
-      if (index === 0) return [];
-      return ["some-file", "another-file", ".git", ".gitignore"];
+
+      return ["bash", "cp", "chown", "chmod", "ls", "ps"];
     });
 
-    // Infinite loop of reading lines
-    const prompt = "~$ ";
-    const readLine = async () => {
-      const input = await localEcho.read(prompt);
-      localEcho.println("You typed: '" + input + "'");
-      readLine();
+    localEcho.addAutocompleteHandler((index) => {
+      if (index === 0) return [];
+      
+      return [".git", ".gitignore", "some-file", "some-other-file", ];
+    });
+
+    // Load addon and initialize terminal.
+    term.loadAddon(localEcho);
+    term.open(document.getElementById("terminal"));
+
+    // Simple looping read function.
+    const readInput = async () => {
+      localEcho.read('~$ ')
+        .then((input) => localEcho.println("Local echo: " + input))
+        .then(readInput);
     };
-    readLine();
+
+    readInput();
     ```
 
 ## API Reference
