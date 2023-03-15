@@ -28,17 +28,17 @@ This local echo controller tries to replicate many bash-like features, including
 
 1. Install using your preferred package manager:
 
-### `npm`
+    ### `npm`
 
-```sh
-npm install @dchesbro/xterm-addon-local-echo
-```
+    ```sh
+    npm install @dchesbro/xterm-addon-local-echo
+    ```
 
-### `yarn`
+    ### `yarn`
 
-```sh
-yarn add @dchesbro/xterm-addon-local-echo
-```
+    ```sh
+    yarn add @dchesbro/xterm-addon-local-echo
+    ```
 
 2. Import and initialize:
 
