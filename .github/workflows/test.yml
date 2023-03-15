@@ -12,11 +12,10 @@ jobs:
           node-version: 16
           cache: yarn
       - run: yarn install
-      - run: yarn lint
       - run: yarn test
       - run: yarn build
-      - name: copy build file
-        run: cp ./dist/index.umd.js ./demo
+      - name: Copy for demo
+        run: cp ./dist/xterm-addon-local-echo.umd.js ./demo
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:

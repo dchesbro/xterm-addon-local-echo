@@ -17,7 +17,7 @@ This local echo controller tries to replicate many bash-like features, including
 - **Multi-line continuation:** Break commands into multiple lines if they contain incomplete quotation marks, boolean operators (`&&` or `||`), pipe operators (`|`), or new-line escape sequence (`\`).
 - **Full navigation for multi-line commands:** Navigate within and edit all lines of the multi-line commands.
 - **History:** Access previous commands using the `up` and `down` arrow keys.
-- **Paste commands:** Paste commands or other text using `cmd+v`.
+- **Paste text:** Paste commands or other text using `cmd+v`.
 - **Tab completion:** Auto-complete commands using the `tab` key with support for adding user defined tab completion callback functions.
 
 ## Demo
@@ -30,7 +30,7 @@ To-do.
 
 ### As an ES6 Module
 
-1. Install it using your preferred package manager:
+1. Install using your preferred package manager:
 
     `npm`
 
