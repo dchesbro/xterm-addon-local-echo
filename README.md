@@ -20,11 +20,7 @@ This local echo controller tries to replicate many bash-like features, including
 - **Paste text:** Paste commands or other text using `cmd+v`.
 - **Tab completion:** Auto-complete commands using the `tab` key with support for adding user defined tab completion callback functions.
 
-## Demo
-
-To-do.
-
-[https://dchesbro.github.io/xterm-addon-local-echo/](https://dchesbro.github.io/xterm-addon-local-echo/)
+**Note:** Crossed out features are implemented, but currently disabled because of bugs related to cursor position on multi-line commands.
 
 ## Usage
 
@@ -58,13 +54,13 @@ To-do.
     localEcho.addAutocompleteHandler((index) => {
       if (index !== 0) return [];
 
-      return ["bash", "cp", "chown", "chmod", "ls", "ps"];
+      return ["bash", "chmod", "chown", "cp", "ls", "ps"];
     });
 
     localEcho.addAutocompleteHandler((index) => {
       if (index === 0) return [];
       
-      return [".git", ".gitignore", "some-file", "some-other-file", ];
+      return [".git", ".gitignore", "some-file", "some-other-file"];
     });
 
     // Load addon and initialize terminal.
@@ -73,7 +69,7 @@ To-do.
 
     // Simple looping read function.
     const readInput = async () => {
-      localEcho.read('~$ ')
+      localEcho.read("$ ")
         .then((input) => localEcho.println("Local echo: " + input))
         .then(readInput);
     };
@@ -81,118 +77,118 @@ To-do.
     readInput();
     ```
 
-## API Reference
+## Public API Reference
 
 ### `constructor(term, [options])`
 
-The constructor accepts an `xterm.js` instance as the first argument and an object with possible options. The options can be:
+The add-on constructor accepts an `xterm.js` instance as the first argument, and an object with settings for all other options as the second argument. Options are:
 
 ```js
 {
-    // The maximum number of entries to keep in history
+    // The maximum number of items to save in the command history.
     historySize: 10,
-    // The maximum number of auto-complete entries, after which the user
-    // will have to confirm before the entries are displayed.
-    maxAutocompleteEntries: 100
+
+    // Enable support for incomplete commands.
+    incompleteEnabled: true,
+
+    // The maximum number of tab complete suggestions to display before prompting the user.
+    tabCompleteSize: 10,
 }
 ```
 
-### `.read(prompt, [continuationPrompt])` -> Promise
+### `.read(ps1, ps2)`
 
-Reads a single line from the user, using local-echo. Returns a promise that will be resolved with the user input when completed.
-
-```js
-localEcho.read("~$", "> ")
-        .then(input => alert(`User entered: ${input}`))
-        .catch(error => alert(`Error reading: ${error}`));
-```
-
-### `.readChar(prompt)` -> Promise
-
-Reads a single character from the user, without echoing anything. Returns a promise that will be resolved with the user input when completed.
-
-This input can be active in parallel with a `.read` prompt. A character typed will be handled in priority by this function.
-
-This is particularly helpful if you want to prompt the user for something amidst an input operation. For example, prompting to confirm an expansion of a large number of auto-complete candidates during tab completion.
+Return promise that resolves when a complete input is sent.
 
 ```js
-localEcho.readChar("Display all 1000 possibilities? (y or n)")
-        .then(yn => {
-            if (yn === 'y' || yn === 'Y') {
-                localEcho.print("lots of stuff!");
-            }
-        })
-        .catch(error => alert(`Error reading: ${error}`));
+localEcho.read("$ ", "> ")
+    .then((input) => localEcho.println("Local echo: " + input))
+    .catch((error) => localEcho.println("Error: " + error));
 ```
 
-### `.abortRead([reason])`
+### `.readChar(ps1)`
 
-Aborts a currently active `.read`. This function will reject the promise returned from `.read`, passing the `reason` as the rejection reason.
+Return a promise that resolves when a user inputs a single character -- can be active in addition to `read()` and will resolve before it.
 
 ```js
-localEcho.read("~$", "> ")
-        .then(input => {})
-        .catch(error => alert(`Error reading: ${error}`));
-
-localEcho.abortRead("aborted because the server responded");
+localEcho.readChar("Do you wish to see all possibilities? (y/n)")
+    .then((char) => {
+        if (char === 'y' || char === 'Y') {
+            localEcho.println("All the possibilities!");
+        }
+    })
+    .catch((error) => localEcho.println("Error: " + error));
 ```
 
-### `.print([message])`
-### `.println([message])`
+### `.abortRead(reason)`
 
-Print a message (and change line) to the terminal. These functions are tailored for writing plain-text messages, performing the appropriate conversions.
-
-For example all new-lines are normalized to `\r\n`, in order for them to appear correctly on the terminal.
-
-### `.printWide(strings)`
-
-Prints an array of strings, occupying the full terminal width. For example:
+Abort read operation(s), if any are pending.
 
 ```js
-localEcho.printWide(["first", "second", "third", "fourth", "fifth", "sixth"]);
+localEcho.read("$ ", "> ")
+    .then((input) => localEcho.println("Local echo: " + input))
+    .catch((error) => localEcho.println("Error: " + error));
+
+localEcho.abortRead("Reason the operation was aborted.");
 ```
 
-Will display the following, according to the current width of your terminal:
+### `.print(output)`
+### `.println(output)`
 
-```
-first  second  third  fourth
-fifth  sixth
-```
+Print string (with newline) and format newline characters.
 
-### `.addAutocompleteHandler(callback, [args...])`
+### `.printlsInline([items], padding)`
+### `.printlsNumber([items], padding)`
 
-Registers an auto-complete handler that will be used by the local-echo controller when the user hits `TAB`.
-
-The callback has the following signature:
+Print an array of string as an inline or numbered list. For example:
 
 ```js
-function (index: Number, tokens: Array[String], [args ...]): Array[String] 
+localEcho.printlsInline(["First", "Second", "Third"]);
+
+localEcho.printlsNumber(["First", "Second", "Third"]);
 ```
 
-Where:
+Will display the following formatted lists:
 
-* `index`: represents the current token in the user command that an auto-complete is requested for.
-* `tokens` : an array with all the tokens in the user command
-* `args...` : one or more arguments, as given when the callback was registered.
+```
+First    Second   Third
 
-The function should return an array of possible auto-complete expressions for the current state of the user input.
+1  First
+2  Second
+3  Third
+```
 
-For example:
+### `.addTabCompleteHandler(callback, [args...])`
+
+Add a tab complete handler function. Callback functions have the following signature:
 
 ```js
-// Auto-completes common commands
-function autocompleteCommonCommands(index, tokens) {
-    if (index == 0) return ["cp", "mv", "ls", "chown"];
-    return [];
-}
-
-// Auto-completes known files
-function autocompleteCommonFiles(index, tokens) {
-    if (index == 0) return [];
-    return [ ".git", ".gitignore", "package.json" ];
-}
-
-// Register the handlers
-localEcho.addAutocompleteHandler(autocompleteCommonCommands);
-localEcho.addAutocompleteHandler(autocompleteCommonFiles);
+/**
+ * @param index     Input fragment used to match tab complete suggestions.
+ * @param fragments An array with all the fragments from the current input string.
+ * @param args...   One or more additional arguments.
+ */
+function (index: Number, fragments: Array[String], [args...]): Array[String] 
 ```
+
+Tab complete callback functions should return an array of suggestions for the current input fragment. For example:
+
+```js
+// Suggestions for commands.
+localEcho.addAutocompleteHandler((index) => {
+    if (index !== 0) return [];
+
+    return ["bash", "chmod", "chown", "cp", "ls", "ps"];
+});
+
+// Suggestions for known files.
+localEcho.addAutocompleteHandler((index) => {
+    if (index === 0) return [];
+    
+    return [".git", ".gitignore", "some-file", "some-other-file"];
+});
+```
+
+### `.removeTabCompleteHandler(callback)`
+
+Remove a previously added tab complete handler function.
