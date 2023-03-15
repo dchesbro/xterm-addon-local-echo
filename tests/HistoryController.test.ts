@@ -14,7 +14,7 @@ describe("HistoryController", () => {
     expect(historyController.items).toEqual(["3", "4", "5"]);
   });
 
-  test("history.getPrev(), .getNext()", () => {
+  test("history.getPrev(), history.getNext()", () => {
     const historySize = 10;
     const historyController = new History(historySize);
 

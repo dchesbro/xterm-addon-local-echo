@@ -7,27 +7,18 @@ import {
   hasIncompleteChars,
 } from "../src/Utils";
 
-/**
- * Test word boundry (right-to-left).
- */
 test("getWord(); Right-to-left", () => {
   expect(getWord("foo bar baz", 5, true)).toEqual(4);
   expect(getWord("foo bar baz", 2, true)).toEqual(0);
   expect(getWord("foo bar baz", 0, true)).toEqual(0);
 });
 
-/**
- * Test word boundry (left-to-right).
- */
 test("getWord(); Left-to-right", () => {
   expect(getWord("foo bar baz", 5, false)).toEqual(8);
   expect(getWord("foo bar baz", 2, false)).toEqual(4);
   expect(getWord("foo bar baz", 11, false)).toEqual(11);
 });
 
-/**
- * Test column and row de-composition.
- */
 test("getColRow()", () => {
   const colSize = 25;
 
@@ -85,9 +76,6 @@ test("getColRow()", () => {
   });
 });
 
-/**
- * Test line counting.
- */
 test("getLineCount()", () => {
   expect(getLineCount("abcdef", 10)).toBe(1);
   expect(getLineCount("abcdef", 6)).toBe(2);
@@ -109,9 +97,6 @@ test("getLineCount()", () => {
   expect(getLineCount(input, 10)).toBe(Math.ceil(inputWithoutColor.length / 10));
 });
 
-/**
- * Test incomplete input detection.
- */
 test("isIncompleteInput()", () => {
   expect(hasIncompleteChars("")).toEqual(false);
   expect(hasIncompleteChars("   ")).toEqual(false);
@@ -136,9 +121,6 @@ test("isIncompleteInput()", () => {
   expect(hasIncompleteChars(`some '   `)).toEqual(true);
 });
 
-/**
- * Test tab complete handler results.
- */
 test("getTabSuggestions()", () => {
   const all = () => {
     return ["a", "ab", "abc"];
@@ -204,9 +186,6 @@ test("getTabSuggestions()", () => {
   ]);
 });
 
-/**
- * Test tab complete shared fragment results.
- */
 test("getSharedFragement()", () => {
   expect(getSharedFragment("a", ["foo-1", "foo-2"])).toEqual(null);
   expect(getSharedFragment("f", ["foo-1", "foo-2", "a"])).toEqual(null);
