@@ -1,6 +1,6 @@
-# local-echo 
+# xterm-addon-local-echo 
 
-this repository is folkd from [[wavesoft/local-echo](https://github.com/wavesoft/local-echo)] and rewrited to typescript.
+This repository is forked from the TypeScript port of [[wavesoft/local-echo](https://github.com/wavesoft/local-echo)] by  [[kobakazu0429/local-echo](https://github.com/kobakazu0429/local-echo)].
 
 > A fully functional local echo controller for xterm.js
 
