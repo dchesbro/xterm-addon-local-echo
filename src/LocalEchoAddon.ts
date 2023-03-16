@@ -183,23 +183,20 @@ export class LocalEchoAddon implements ITerminalAddon {
       return;
     }
 
-    const width = items.reduce((width, e) => Math.max(width, e.length), 0);
-    const widthTerm = this.terminalSize.cols;
+    const widest = items.reduce((width, e) => Math.max(width, e.length), 0);
 
-    let offset = 0;
     let output = '';
 
     for (let i = 0; i < items.length; i++) {
-      let padded = items[i].padEnd(width + padding, ' ');
+      let itemWide = items[i].padEnd(widest + padding, ' ');
 
-      if ((offset + padded.length) > widthTerm) {
-        offset = 0;
-        output += '\r\n';
-      } else {
-        offset += padded.length;
+      if ((output.length + itemWide.length) > this.terminalSize.cols) {
+        this.println(output);
+
+        output = '';
       }
 
-      output += padded;
+      output += itemWide;
     }
 
     this.println(output);
