@@ -31,13 +31,13 @@ This local echo controller tries to replicate many bash-like features, including
     ### `npm`
 
     ```sh
-    npm install @dchesbro/xterm-addon-local-echo
+    npm install dchesbro/xterm-addon-local-echo
     ```
 
     ### `yarn`
 
     ```sh
-    yarn add @dchesbro/xterm-addon-local-echo
+    yarn add dchesbro/xterm-addon-local-echo
     ```
 
 2. Import and initialize:
