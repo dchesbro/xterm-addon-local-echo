@@ -172,12 +172,12 @@ test("getTabSuggestions()", () => {
     "a",
     "ab",
     "abc",
-    "c",
-    "cd",
-    "cde",
     "b",
     "bc",
     "bcd",
+    "c",
+    "cd",
+    "cde",
   ]);
   expect(getTabSuggestions(handlers, "ab b")).toEqual([
     "b",
