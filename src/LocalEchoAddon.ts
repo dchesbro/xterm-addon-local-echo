@@ -184,23 +184,25 @@ export class LocalEchoAddon implements ITerminalAddon {
     }
 
     const width = items.reduce((width, e) => Math.max(width, e.length), 0);
-    const widthTerm = this.terminal.cols;
-    const cols = Math.floor(widthTerm / width) || 1;
-    const rows = Math.floor(items.length / width) || 1;
+    const widthTerm = this.terminalSize.cols;
 
-    let i = 0;
+    let offset = 0;
+    let output = '';
 
-    for (let row = 0; row < rows; row++) {
-      let output = '';
+    for (let i = 0; i < items.length; i++) {
+      let padded = items[i].padEnd(width + padding, ' ');
 
-      for (let col = 0; col < cols; col++) {
-        if (i < items.length) {
-          output += items[i++].padEnd(width + padding, ' ');
-        }
+      if ((offset + padded.length) > widthTerm) {
+        offset = 0;
+        output += '\r\n';
+      } else {
+        offset += padded.length;
       }
 
-      this.println(output);
+      output += padded;
     }
+
+    this.println(output);
   }
 
   /**
@@ -267,9 +269,9 @@ export class LocalEchoAddon implements ITerminalAddon {
   /**
    * Complete current input, call defined callback, and display prompt.
    * 
-   * @param callback Handler function or other data.
+   * @param callback Handler function.
    */
-  private applyPromptComplete(callback: any) {
+  private applyPromptComplete(callback: Function) {
     const cursor = this.cursor;
 
     this.setCursor(this.input.length);
@@ -284,7 +286,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     const promise = callback();
 
     // If callback doesn't return a promise, resume...
-    if (promise === null) {
+    if (promise == null) {
       resume();
 
     // ...else, wait for promise to resolve and then resume.
