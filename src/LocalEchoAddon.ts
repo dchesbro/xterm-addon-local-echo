@@ -489,7 +489,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           break;
 
         // Tab.
-        case '\t':          
+        case '\t':
           if (this.tabCompleteHandlers.length) {
             const fragment = this.input.substring(0, this.cursor);
             const suggestions = getTabSuggestions(
@@ -503,9 +503,9 @@ export class LocalEchoAddon implements ITerminalAddon {
             // If no suggestions found...
             if (suggestions.length === 0) {
 
-              // If no trailing whitespace already, insert space.
+              // If no trailing whitespace already, insert tab.
               if (!trailingWhitespace) {
-                this.handleCursorInsert(' ');
+                this.handleCursorInsert('\t');
               }
 
             // ...else, if only one suggestion found, print it...
@@ -546,7 +546,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               );
             }
           } else {
-            this.handleCursorInsert('    ');
+            this.handleCursorInsert('\t');
           }
           break;
 

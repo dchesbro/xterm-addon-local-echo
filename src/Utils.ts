@@ -120,7 +120,7 @@ export function getTabSuggestions(callbacks: any[], input: string): string[] {
     }
   }, []);
 
-  return suggestions.filter((command: string) => command.startsWith(exp)).sort();
+  return suggestions.filter((command: string) => command.startsWith(exp));
 }
 
 /**
