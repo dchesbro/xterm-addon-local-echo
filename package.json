@@ -1,6 +1,6 @@
 {
   "name": "@dchesbro/xterm-addon-local-echo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "contributors": [
     {
       "name": "Ioannis Charalampidis",
@@ -26,7 +26,7 @@
   "repository": "https://github.com/dchesbro/xterm-addon-local-echo",
   "exports": "./dist/xterm-addon-local-echo.modern.js",
   "files": [
-    "lib",
+    "dist",
     "src"
   ],
   "main": "./dist/xterm-addon-local-echo.cjs",
