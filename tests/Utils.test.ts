@@ -1,7 +1,7 @@
 import {
   getColRow,
   getLineCount,
-  getSharedFragment,
+  getTabMatch,
   getTabSuggestions,
   getWord,
   hasIncompleteChars,
@@ -187,11 +187,11 @@ test("getTabSuggestions()", () => {
 });
 
 test("getSharedFragement()", () => {
-  expect(getSharedFragment("a", ["foo-1", "foo-2"])).toEqual(null);
-  expect(getSharedFragment("f", ["foo-1", "foo-2", "a"])).toEqual(null);
-  expect(getSharedFragment("f", ["foo-1", "foo-2"])).toEqual("foo-");
-  expect(getSharedFragment("foo", ["foo-1", "foo-2"])).toEqual("foo-");
-  expect(getSharedFragment("f", ["foo-1", "foo-2", "fuu"])).toEqual("f");
-  expect(getSharedFragment("foo", ["foo-", "foo-1"])).toEqual("foo-");
-  expect(getSharedFragment("foo", ["foo-1", "foo-"])).toEqual("foo-");
+  expect(getTabMatch("a", ["foo-1", "foo-2"])).toEqual(null);
+  expect(getTabMatch("f", ["foo-1", "foo-2", "a"])).toEqual(null);
+  expect(getTabMatch("f", ["foo-1", "foo-2"])).toEqual("foo-");
+  expect(getTabMatch("foo", ["foo-1", "foo-2"])).toEqual("foo-");
+  expect(getTabMatch("f", ["foo-1", "foo-2", "fuu"])).toEqual("f");
+  expect(getTabMatch("foo", ["foo-", "foo-1"])).toEqual("foo-");
+  expect(getTabMatch("foo", ["foo-1", "foo-"])).toEqual("foo-");
 });

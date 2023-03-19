@@ -2,8 +2,8 @@ import type { Terminal, ITerminalAddon, IDisposable } from 'xterm';
 import ansiRegex from 'ansi-regex';
 
 import { History } from './History';
-import { getColRow, getLastFragment, getLineCount, getSharedFragment, 
-  getTabSuggestions, getWord, hasIncompleteChars, hasTailingWhitespace 
+import { getColRow, getLastFrargment, getLineCount, getTabMatch, 
+  getTabSuggestions, getWord, hasIncompleteChars, hasTrailingWhitespace 
 } from './Utils';
 
 interface ActivePrompt {
@@ -490,50 +490,41 @@ export class LocalEchoAddon implements ITerminalAddon {
 
         // Tab.
         case '\t':
+
+          // If any tab complete handlers found, check for suggestions...
           if (this.tabCompleteHandlers.length) {
-            const fragment = this.input.substring(0, this.cursor);
+            const input = this.input.substring(0, this.cursor);
             const suggestions = getTabSuggestions(
               this.tabCompleteHandlers,
-              fragment
+              input
             );
-            const trailingWhitespace = hasTailingWhitespace(fragment);
 
             suggestions.sort();
 
-            // If no suggestions found...
+            // If no suggestions found, check for trailing whitespace...
             if (suggestions.length === 0) {
+              const trailingWhitespace = hasTrailingWhitespace(input);
 
-              // If no trailing whitespace already, insert tab.
+              // If no trailing whitespace found, insert tab.
               if (!trailingWhitespace) {
                 this.handleCursorInsert('\t');
               }
 
-            // ...else, if only one suggestion found, print it...
+            // ...else, if only one suggestion found append to input...
             } else if (suggestions.length === 1) {
-              const fragmentLast = getLastFragment(fragment);
+              const frargment = getLastFrargment(input);
 
               this.handleCursorInsert(
-                suggestions[0].substring(fragmentLast.length) + ' '
+                suggestions[0].substring(frargment.length) + ' '
               );
 
-            // ...else, if number of suggestions less than max, print list...
+            // ...else, if number of suggestions less than maximum print list...
             } else if (suggestions.length <= this.tabCompleteSize) {
-              const fragmentShared = getSharedFragment(fragment, suggestions);
-
-              // If shared fragment found, print it.
-              if (fragmentShared) {
-                const fragmentLast = getLastFragment(fragment);
-
-                this.handleCursorInsert(
-                  fragmentShared.substring(fragmentLast.length)
-                );
-              }
-
               this.applyPromptComplete(() => {
                 this.printlsInline(suggestions);
               });
 
-            // ...else, print suggestions prompt.
+            // ...else, print display all suggestions prompt.
             } else {
               this.applyPromptComplete(() =>
                 this.readChar(
@@ -545,6 +536,8 @@ export class LocalEchoAddon implements ITerminalAddon {
                 })
               );
             }
+
+          // ...else, insert tab.
           } else {
             this.handleCursorInsert('\t');
           }
