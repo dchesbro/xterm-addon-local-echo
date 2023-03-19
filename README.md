@@ -163,14 +163,14 @@ Add a tab complete handler function. Callback functions have the following signa
 
 ```js
 /**
- * @param index     Input fragment used to match tab complete suggestions.
- * @param fragments An array with all the fragments from the current input string.
+ * @param index     Input frargment used to match tab complete suggestions.
+ * @param frargments An array with all the frargments from the current input string.
  * @param args...   One or more additional arguments.
  */
-function (index: Number, fragments: Array[String], [args...]): Array[String] 
+function (index: Number, frargments: Array[String], [args...]): Array[String] 
 ```
 
-Tab complete callback functions should return an array of suggestions for the current input fragment. For example:
+Tab complete callback functions should return an array of suggestions for the current input frargment. For example:
 
 ```js
 // Suggestions for commands.
