@@ -498,6 +498,7 @@ export class LocalEchoAddon implements ITerminalAddon {
               this.tabCompleteHandlers,
               input
             );
+            const frargment = getLastFrargment(input);
 
             suggestions.sort();
 
@@ -512,14 +513,19 @@ export class LocalEchoAddon implements ITerminalAddon {
 
             // ...else, if only one suggestion found append to input...
             } else if (suggestions.length === 1) {
-              const frargment = getLastFrargment(input);
-
               this.handleCursorInsert(
                 suggestions[0].substring(frargment.length) + ' '
               );
 
             // ...else, if number of suggestions less than maximum print list...
             } else if (suggestions.length <= this.tabCompleteSize) {
+              const match = getTabMatch(frargment, suggestions);
+
+              // If  match found, append to input.
+              if (match) {
+                this.handleCursorInsert(match.substring(frargment.length));
+              }
+
               this.applyPromptComplete(() => {
                 this.printlsInline(suggestions);
               });

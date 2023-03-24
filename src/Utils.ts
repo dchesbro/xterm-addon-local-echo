@@ -59,7 +59,7 @@ export function getLineCount(input: string, cols: number) {
 }
 
 /**
- * Loop through defined suggestions to find best match for defined input.
+ * Loop through suggestions to find shared matches for defined input.
  * 
  * @param input       Input string.
  * @param suggestions Array of tab complete suggestions.
