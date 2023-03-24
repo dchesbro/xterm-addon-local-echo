@@ -718,7 +718,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     this.print(prompt);
 
     const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
-    const trailingChars = prompt.substring(cursor).length;
+    const trailingChars = prompt.replace(ansiRegex(), '').substring(cursor).length;
 
     // If trailing characters found, check if they wrap...
     if (trailingChars) {
