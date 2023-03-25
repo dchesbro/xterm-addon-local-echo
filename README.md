@@ -18,7 +18,7 @@ This local echo controller tries to replicate many bash-like features, including
 - **Full navigation for multi-line commands:** Navigate within and edit all lines of the multi-line commands.
 - **History:** Access previous commands using the `up` and `down` arrow keys.
 - **Paste text:** Paste commands or other text using `cmd+v`.
-- **Tab completion:** Auto-complete commands using the `tab` key with support for adding user defined tab completion callback functions.
+- **Tab completion:** Auto-complete commands using the `tab` key with support for adding user defined tab completion callback functions, now works with multi-word commands!
 
 **Note:** Crossed out features are completely or partially implemented, but disabled because of bugs related to cursor position on multi-line commands.
 
@@ -163,14 +163,14 @@ Add a tab complete handler function. Callback functions have the following signa
 
 ```js
 /**
- * @param index     Input frargment used to match tab complete suggestions.
- * @param frargments An array with all the frargments from the current input string.
+ * @param index     Input fragment used to match tab complete suggestions.
+ * @param fragments An array with all the fragments from the current input string.
  * @param args...   One or more additional arguments.
  */
-function (index: Number, frargments: Array[String], [args...]): Array[String] 
+function (index: Number, fragments: Array[String], [args...]): Array[String] 
 ```
 
-Tab complete callback functions should return an array of suggestions for the current input frargment. For example:
+Tab complete callback functions should return an array of suggestions for the current input fragment. For example:
 
 ```js
 // Suggestions for commands.

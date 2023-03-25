@@ -1,7 +1,7 @@
 import {
   getColRow,
   getLineCount,
-  getTabMatch,
+  getTabShared,
   getTabSuggestions,
   getWord,
   hasIncompleteChars,
@@ -187,11 +187,11 @@ test("getTabSuggestions()", () => {
 });
 
 test("getSharedFragement()", () => {
-  expect(getTabMatch("a", ["foo-1", "foo-2"])).toEqual(null);
-  expect(getTabMatch("f", ["foo-1", "foo-2", "a"])).toEqual(null);
-  expect(getTabMatch("f", ["foo-1", "foo-2"])).toEqual("foo-");
-  expect(getTabMatch("foo", ["foo-1", "foo-2"])).toEqual("foo-");
-  expect(getTabMatch("f", ["foo-1", "foo-2", "fuu"])).toEqual("f");
-  expect(getTabMatch("foo", ["foo-", "foo-1"])).toEqual("foo-");
-  expect(getTabMatch("foo", ["foo-1", "foo-"])).toEqual("foo-");
+  expect(getTabShared("a", ["foo-1", "foo-2"])).toEqual(null);
+  expect(getTabShared("f", ["foo-1", "foo-2", "a"])).toEqual(null);
+  expect(getTabShared("f", ["foo-1", "foo-2"])).toEqual("foo-");
+  expect(getTabShared("foo", ["foo-1", "foo-2"])).toEqual("foo-");
+  expect(getTabShared("f", ["foo-1", "foo-2", "fuu"])).toEqual("f");
+  expect(getTabShared("foo", ["foo-", "foo-1"])).toEqual("foo-");
+  expect(getTabShared("foo", ["foo-1", "foo-"])).toEqual("foo-");
 });

@@ -2,7 +2,7 @@ import type { Terminal, ITerminalAddon, IDisposable } from 'xterm';
 import ansiRegex from 'ansi-regex';
 
 import { History } from './History';
-import { getColRow, getLastFrargment, getLineCount, getTabMatch, 
+import { getColRow, getTrailingFragment, getLineCount, getTabShared, 
   getTabSuggestions, getWord, hasIncompleteChars, hasTrailingWhitespace 
 } from './Utils';
 
@@ -497,10 +497,8 @@ export class LocalEchoAddon implements ITerminalAddon {
             const suggestions = getTabSuggestions(
               this.tabCompleteHandlers,
               input
-            );
-            const frargment = getLastFrargment(input);
-
-            suggestions.sort();
+            ).sort();
+            const trailingFragment = getTrailingFragment(input);
 
             // If no suggestions found, check for trailing whitespace...
             if (suggestions.length === 0) {
@@ -514,16 +512,16 @@ export class LocalEchoAddon implements ITerminalAddon {
             // ...else, if only one suggestion found append to input...
             } else if (suggestions.length === 1) {
               this.handleCursorInsert(
-                suggestions[0].substring(frargment.length) + ' '
+                suggestions[0].substring(trailingFragment.length) + ' '
               );
 
             // ...else, if number of suggestions less than maximum print list...
             } else if (suggestions.length <= this.tabCompleteSize) {
-              const match = getTabMatch(frargment, suggestions);
+              const shared = getTabShared(trailingFragment, suggestions);
 
-              // If  match found, append to input.
-              if (match) {
-                this.handleCursorInsert(match.substring(frargment.length));
+              // If shared fragment found, append to input.
+              if (shared) {
+                this.handleCursorInsert(shared.substring(trailingFragment.length));
               }
 
               this.applyPromptComplete(() => {

@@ -32,23 +32,6 @@ export function getColRow(input: string, offset: number, cols: number) {
 }
 
 /**
- * Get last argument fragment for defined input.
- * 
- * @param input Input string.
- */
-export function getLastFrargment(input: string): string {
-
-  // If input empty or has trailing whitespace, return empty string.
-  if (input.trim() === '' || hasTrailingWhitespace(input)) {
-    return '';
-  }
-
-  let frargments = parse(input) as string[];
-
-  return frargments.pop() || '';
-}
-
-/**
  * Counts the number lines for defined input.
  * 
  * @param input Input string.
@@ -59,12 +42,12 @@ export function getLineCount(input: string, cols: number) {
 }
 
 /**
- * Loop through suggestions to find shared matches for defined input.
+ * Loop through suggestions to find fragment shared w/ defined input.
  * 
  * @param input       Input string.
  * @param suggestions Array of tab complete suggestions.
  */
-export function getTabMatch(input: string, suggestions: string[]): string {
+export function getTabShared(input: string, suggestions: string[]): string {
 
   // End loop if input length is equal to or greater than suggestion length.
   if (input.length >= suggestions[0].length) {
@@ -73,7 +56,7 @@ export function getTabMatch(input: string, suggestions: string[]): string {
 
   const inputPrev = input;
 
-  // Add suggestion frargment to input.
+  // Add suggestion fragment to input.
   input += suggestions[0].slice(input.length, input.length + 1);
 
   for (let i = 0; i < suggestions.length; i++) {    
@@ -86,7 +69,7 @@ export function getTabMatch(input: string, suggestions: string[]): string {
     }
   }
 
-  return getTabMatch(input, suggestions);
+  return getTabShared(input, suggestions);
 }
 
 /**
@@ -96,25 +79,25 @@ export function getTabMatch(input: string, suggestions: string[]): string {
  * @param input     Input string.
  */
 export function getTabSuggestions(callbacks: any[], input: string): string[] {
-  const frargments = parse(input) as string[];
+  const fragments = parse(input) as string[];
 
-  let index = frargments.length - 1;
-  let frargment = frargments[index] || '';
+  let index = fragments.length - 1;
+  let fragment = fragments[index] || '';
 
   // ...
   if (input.trim() === '') {
     index = 0;
-    frargment = '';
+    fragment = '';
 
   // ...
   } else if (hasTrailingWhitespace(input)) {
     index += 1;
-    frargment = '';
+    fragment = '';
   }
 
   const suggestions = callbacks.reduce((candidates, { callback, args }) => {
     try {
-      return candidates.concat(callback(index, frargments, ...args));
+      return candidates.concat(callback(index, fragments, ...args));
     } catch (error) {
       console.error('Tab complete error:', error);
       
@@ -123,8 +106,25 @@ export function getTabSuggestions(callbacks: any[], input: string): string[] {
   }, []);
 
   return suggestions.filter((suggestion: string) => (
-    suggestion.startsWith(frargment)
+    suggestion.startsWith(fragment)
   ));
+}
+
+/**
+ * Get last argument fragment for defined input.
+ * 
+ * @param input Input string.
+ */
+export function getTrailingFragment(input: string): string {
+
+  // If input empty or has trailing whitespace, return empty string.
+  if (hasTrailingWhitespace(input) || input.trim() === '') {
+    return '';
+  }
+
+  let fragments = parse(input) as string[];
+
+  return fragments.pop() || '';
 }
 
 /**
