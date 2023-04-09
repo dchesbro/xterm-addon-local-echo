@@ -2,8 +2,15 @@ import type { Terminal, ITerminalAddon, IDisposable } from 'xterm';
 import ansiRegex from 'ansi-regex';
 
 import { History } from './History';
-import { getColRow, getTrailingFragment, getLineCount, getTabShared, 
-  getTabSuggestions, getWord, hasIncompleteChars, hasTrailingWhitespace 
+import {
+  getColRow,
+  getTrailingFragment,
+  getLineCount,
+  getTabShared,
+  getTabSuggestions,
+  getWord,
+  hasIncompleteChars,
+  hasTrailingWhitespace,
 } from './Utils';
 
 interface ActivePrompt {
@@ -44,7 +51,7 @@ export class LocalEchoAddon implements ITerminalAddon {
   private terminalSize: TerminalSize = { cols: 0, rows: 0 };
 
   public history: History;
-  
+
   constructor(options?: Partial<Options>) {
     this.history = new History(options?.historySize ?? 10);
     this.incompleteEnabled = options?.incompleteEnabled ?? true;
@@ -55,14 +62,18 @@ export class LocalEchoAddon implements ITerminalAddon {
     if (!this.terminal) {
       return;
     }
-    
-    this.disposables.push(this.terminal.onData((data) => {
-      return this.handleTermData(data);
-    }));
 
-    this.disposables.push(this.terminal.onResize((size) => {
-      return this.handleTermResize(size);
-    }));
+    this.disposables.push(
+      this.terminal.onData((data) => {
+        return this.handleTermData(data);
+      })
+    );
+
+    this.disposables.push(
+      this.terminal.onResize((size) => {
+        return this.handleTermResize(size);
+      })
+    );
 
     this.terminalSize = {
       cols: this.terminal.cols,
@@ -90,7 +101,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Return promise that resolves when a complete input is sent.
-   * 
+   *
    * @param ps1 Default input prompt string.
    * @param ps2 Continuation input prompt string.
    */
@@ -111,9 +122,9 @@ export class LocalEchoAddon implements ITerminalAddon {
   }
 
   /**
-   * Return a promise that resolves when a user inputs a single character -- can 
+   * Return a promise that resolves when a user inputs a single character -- can
    * be active in addition to `read()` and will resolve before it.
-   * 
+   *
    * @param ps1 Default input prompt string.
    */
   public async readChar(ps1: string) {
@@ -131,7 +142,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Abort read operation(s), if any are pending.
-   * 
+   *
    * @param reason Abort reason string.
    */
   public readAbort(reason = 'READINT') {
@@ -154,18 +165,18 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Print string and format newline characters.
-   * 
+   *
    * @param output String to print.
    */
   public print(output: string) {
     const print = output.replace(/[\r\n]+/g, '\n');
-    
+
     this.terminal.write(print.replace(/\n/g, '\r\n'));
   }
 
   /**
    * Print string w/ newline.
-   * 
+   *
    * @param output String to print.
    */
   public println(output: string) {
@@ -174,7 +185,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Print inline list w/ padding.
-   * 
+   *
    * @param items   Array of list items.
    * @param padding Horizontal padding between list items.
    */
@@ -190,7 +201,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     for (let i = 0; i < items.length; i++) {
       let itemWide = items[i].padEnd(widest + padding, ' ');
 
-      if ((output.length + itemWide.length) > this.terminalSize.cols) {
+      if (output.length + itemWide.length > this.terminalSize.cols) {
         this.println(output);
 
         output = '';
@@ -204,7 +215,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Print numbered list w/ padding.
-   * 
+   *
    * @param items   Array of list items.
    * @param padding Horizontal padding between columns.
    */
@@ -215,14 +226,16 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     const cols = items.length.toString().length;
 
-    for (let i = 0; i < items.length; i++ ) {
-      this.println(`${i + 1}`.padEnd(padding, ' ').padStart(cols, ' ') + items[i]);
+    for (let i = 0; i < items.length; i++) {
+      this.println(
+        `${i + 1}`.padEnd(padding, ' ').padStart(cols, ' ') + items[i]
+      );
     }
   }
 
   /**
    * Add a tab complete handler function.
-   * 
+   *
    * @param callback Handler function.
    * @param args     Additional arguments.
    */
@@ -232,7 +245,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Remove a previously added tab complete handler function.
-   * 
+   *
    * @param callback Handler function.
    */
   public removeTabCompleteHandler(callback: Function) {
@@ -251,13 +264,13 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Apply prompt string(s) to the defined input.
-   * 
+   *
    * @param input Input string.
    */
   private applyPrompt(input: string) {
     const prompt = {
       ...{ ps1: '', ps2: '' },
-      ...this.activePrompt
+      ...this.activePrompt,
     };
 
     return prompt.ps1 + input.replace(/\n/g, '\n' + prompt.ps2);
@@ -265,7 +278,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Complete current input, call defined callback, and display prompt.
-   * 
+   *
    * @param callback Handler function.
    */
   private applyPromptComplete(callback: Function) {
@@ -286,7 +299,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     if (promise == null) {
       resume();
 
-    // ...else, wait for promise to resolve and then resume.
+      // ...else, wait for promise to resolve and then resume.
     } else {
       promise.then(resume);
     }
@@ -294,7 +307,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Returns adjusted offset w/ respect to defined input and prompt strings.
-   * 
+   *
    * @param input  Input string.
    * @param offset Input cursor offset.
    */
@@ -313,7 +326,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
     // Get current cursor position and lines count.
     const { row } = getColRow(input, offset, this.terminalSize.cols);
-    const lines = getLineCount(input, this.terminalSize.cols)
+    const lines = getLineCount(input, this.terminalSize.cols);
     const moveDown = lines - (row + 1);
 
     // Move to last line of the current input.
@@ -331,31 +344,34 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Insert character(s) at current cursor offset.
-   * 
+   *
    * @param input Input string.
    */
   private handleCursorInsert(input: string) {
     this.cursor += input.length;
 
-    this.setInput(this.input.substring(0, this.cursor) + input + this.input.substring(this.cursor));
+    this.setInput(
+      this.input.substring(0, this.cursor) +
+        input +
+        this.input.substring(this.cursor)
+    );
   }
-  
+
   /**
    * Move cursor w/ respect to current cursor offset.
-   * 
+   *
    * @param offset Cursor movement offset.
    */
   private handleCursorMove(offset: number) {
-
     // If positive offset, move cursor forward.
     if (offset > 0) {
-      const move = Math.min(offset, (this.input.length - this.cursor));
+      const move = Math.min(offset, this.input.length - this.cursor);
 
       this.setCursor(this.cursor + move);
 
-    // ...else, if negative offset, move cursor back.
+      // ...else, if negative offset, move cursor back.
     } else if (offset < 0) {
-      const move = Math.max(offset, (this.cursor * -1));
+      const move = Math.max(offset, this.cursor * -1);
 
       this.setCursor(this.cursor + move);
     }
@@ -363,42 +379,42 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Erase a character at cursor location
-   * 
+   *
    * @param bksp Backspace key press.
    */
   private handleCursorErase(bksp: boolean) {
-
     // If backspace key press, move cursor position back.
     if (bksp && this.cursor > 0) {
       this.cursor -= 1;
     }
-    
-    this.setInput(this.input.substring(0, this.cursor) + this.input.substring(this.cursor + 1));
+
+    this.setInput(
+      this.input.substring(0, this.cursor) +
+        this.input.substring(this.cursor + 1)
+    );
   }
 
   /**
    * Handle input data from terminal based on key press.
-   * 
+   *
    * @param data Key press data from terminal.
    */
   private handleData(data: string) {
-
     // If no prompt(s) active, return.
-    if (!this.active){
+    if (!this.active) {
       return;
     }
 
     const char = data.charCodeAt(0);
-    
+
     // If ANSI escape sequence...
     if (char == 0x1b) {
       switch (data.substring(1)) {
-
         // Up arrow.
         case '[A':
           if (this.history) {
             const prev = this.history.getPrev();
-            
+
             if (prev) {
               this.setInput(prev);
               this.setCursor(prev.length);
@@ -459,21 +475,19 @@ export class LocalEchoAddon implements ITerminalAddon {
         case '\x7F': {
           const b = getWord(this.input, this.cursor, true);
           const a = getWord(this.input, b, false);
-          
+
           this.setInput(this.input.substring(0, b) + this.input.substring(a));
           this.setCursor(b);
           break;
         }
       }
 
-    // ...else, if special character...
+      // ...else, if special character...
     } else if (char < 32 || char === 0x7f) {
       switch (data) {
-
         // Enter.
         case '\r':
           if (this.incompleteEnabled) {
-
             // If current input has incomplete char(s), move to new line.
             if (hasIncompleteChars(this.input)) {
               this.handleCursorInsert('\n');
@@ -490,7 +504,6 @@ export class LocalEchoAddon implements ITerminalAddon {
 
         // Tab.
         case '\t':
-
           // If any tab complete handlers found, check for suggestions...
           if (this.tabCompleteHandlers.length) {
             const input = this.input.substring(0, this.cursor);
@@ -501,7 +514,6 @@ export class LocalEchoAddon implements ITerminalAddon {
                 return suggestions.sort();
               })
               .then((suggestions) => {
-
                 // If no suggestions found, check for trailing whitespace...
                 if (suggestions.length === 0) {
                   const whitespace = hasTrailingWhitespace(input);
@@ -511,13 +523,13 @@ export class LocalEchoAddon implements ITerminalAddon {
                     this.handleCursorInsert('\t');
                   }
 
-                // ...else, if only one suggestion found append to input...
+                  // ...else, if only one suggestion found append to input...
                 } else if (suggestions.length === 1) {
                   this.handleCursorInsert(
                     suggestions[0].substring(fragment.length) + ' '
                   );
 
-                // ...else, if number of suggestions less than maximum print list...
+                  // ...else, if number of suggestions less than maximum print list...
                 } else if (suggestions.length <= this.tabCompleteSize) {
                   const shared = getTabShared(fragment, suggestions);
 
@@ -530,7 +542,7 @@ export class LocalEchoAddon implements ITerminalAddon {
                     this.printlsInline(suggestions);
                   });
 
-                // ...else, print display all suggestions prompt.
+                  // ...else, print display all suggestions prompt.
                 } else {
                   this.applyPromptComplete(() =>
                     this.readChar(
@@ -544,7 +556,7 @@ export class LocalEchoAddon implements ITerminalAddon {
                 }
               });
 
-          // ...else, insert tab.
+            // ...else, insert tab.
           } else {
             this.handleCursorInsert('\t');
           }
@@ -554,7 +566,7 @@ export class LocalEchoAddon implements ITerminalAddon {
         case '\x03':
           const prompt = {
             ...{ ps1: '', ps2: '' },
-            ...this.activePrompt
+            ...this.activePrompt,
           };
 
           this.setCursor(this.input.length);
@@ -567,7 +579,7 @@ export class LocalEchoAddon implements ITerminalAddon {
           break;
       }
 
-    // ...else, printable character(s).
+      // ...else, printable character(s).
     } else {
       this.handleCursorInsert(data);
     }
@@ -594,7 +606,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Handle terminal input.
-   * 
+   *
    * @param input Input string.
    */
   private handleTermData(input: string) {
@@ -608,16 +620,16 @@ export class LocalEchoAddon implements ITerminalAddon {
 
       this.activePromptChar = null;
 
-      return this.terminal.write("\r\n");
+      return this.terminal.write('\r\n');
     }
 
     // If pasted input, normalize and process each character...
     if (input.length > 3 && input.charCodeAt(0) !== 0x1b) {
-      const pasted = input.replace(/[\r\n]+/g, "\r");
+      const pasted = input.replace(/[\r\n]+/g, '\r');
 
       Array.from(pasted).forEach((char) => this.handleData(char));
 
-    // ...else, process input data.
+      // ...else, process input data.
     } else {
       this.handleData(input);
     }
@@ -625,7 +637,7 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Clear the current prompt, update terminal size, and re-render prompt.
-   * 
+   *
    * @param size Terminal size object.
    */
   private handleTermResize(size: TerminalSize) {
@@ -638,11 +650,10 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Set new cursor position as an offset of the current input string.
-   * 
+   *
    * @param offset Input cursor offset.
    */
   private setCursor(offset: number) {
-
     // Make sure cursor offset isn't outside input length.
     if (offset < 0) {
       offset = 0;
@@ -653,7 +664,7 @@ export class LocalEchoAddon implements ITerminalAddon {
     }
 
     const prompt = this.applyPrompt(this.input);
-    
+
     // Get previous cursor position.
     const cursorPrev = this.applyPromptOffset(this.input, this.cursor);
     const { col: colPrev, row: rowPrev } = getColRow(
@@ -673,26 +684,26 @@ export class LocalEchoAddon implements ITerminalAddon {
     // If new number of rows greater than previous number, move down...
     if (rowNew > rowPrev) {
       for (let i = rowPrev; i < rowNew; ++i) {
-        this.terminal.write("\x1B[B");
+        this.terminal.write('\x1B[B');
       }
-    
-    // ...else, move up.
+
+      // ...else, move up.
     } else {
       for (let i = rowNew; i < rowPrev; ++i) {
-        this.terminal.write("\x1B[A");
+        this.terminal.write('\x1B[A');
       }
     }
 
     // If new number of columns greater than previous number, move right...
     if (colNew > colPrev) {
       for (let i = colPrev; i < colNew; ++i) {
-        this.terminal.write("\x1B[C");
+        this.terminal.write('\x1B[C');
       }
 
-    // ...else, move left.
+      // ...else, move left.
     } else {
       for (let i = colNew; i < colPrev; ++i) {
-        this.terminal.write("\x1B[D");
+        this.terminal.write('\x1B[D');
       }
     }
 
@@ -702,12 +713,11 @@ export class LocalEchoAddon implements ITerminalAddon {
 
   /**
    * Set defined input w/ previous input or replace previous input.
-   * 
+   *
    * @param input      Input string.
    * @param clearInput Clear current input before writing.
    */
   private async setInput(input: string, clearInput = true) {
-
     // Clear current input?
     if (clearInput) {
       this.clearInput();
@@ -725,17 +735,19 @@ export class LocalEchoAddon implements ITerminalAddon {
     this.print(prompt);
 
     const { col, row } = getColRow(prompt, cursor, this.terminalSize.cols);
-    const trailingChars = prompt.replace(ansiRegex(), '').substring(cursor).length;
+    const trailingChars = prompt
+      .replace(ansiRegex(), '')
+      .substring(cursor).length;
 
     // If trailing characters found, check if they wrap...
     if (trailingChars) {
       const offset = cursor % this.terminalSize.cols;
 
-      if ((offset + trailingChars) === this.terminalSize.cols) {
+      if (offset + trailingChars === this.terminalSize.cols) {
         this.terminal.write('\x1B[E');
       }
 
-    // ...else, maybe wrap to newline.
+      // ...else, maybe wrap to newline.
     } else {
       if (row !== 0 && col === 0) {
         this.terminal.write('\x1B[E');

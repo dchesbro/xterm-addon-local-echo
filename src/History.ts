@@ -25,13 +25,13 @@ export class History {
    */
   getNext(): string {
     this.index = Math.min(this.items.length, this.index + 1);
-    
+
     return this.items[this.index];
   }
 
   /**
    * Add item to history.
-   * 
+   *
    * @param input Input string.
    */
   push(input: string): void {

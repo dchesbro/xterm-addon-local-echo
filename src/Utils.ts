@@ -3,7 +3,7 @@ import ansiRegex from 'ansi-regex';
 
 /**
  * Get column and row position for defined input and cursor offset.
- * 
+ *
  * @param input  Input string
  * @param offset Input cursor offset.
  * @param cols   Maximum number of columns.
@@ -33,7 +33,7 @@ export function getColRow(input: string, offset: number, cols: number) {
 
 /**
  * Counts the number lines for defined input.
- * 
+ *
  * @param input Input string.
  * @param cols  Maximum number of columns.
  */
@@ -43,12 +43,11 @@ export function getLineCount(input: string, cols: number) {
 
 /**
  * Loop through suggestions to find fragment shared w/ defined input.
- * 
+ *
  * @param input       Input string.
  * @param suggestions Array of tab complete suggestions.
  */
 export function getTabShared(input: string, suggestions: string[]): string {
-
   // End loop if input length is equal to or greater than suggestion length.
   if (input.length >= suggestions[0].length) {
     return input;
@@ -59,7 +58,7 @@ export function getTabShared(input: string, suggestions: string[]): string {
   // Add suggestion fragment to input.
   input += suggestions[0].slice(input.length, input.length + 1);
 
-  for (let i = 0; i < suggestions.length; i++) {    
+  for (let i = 0; i < suggestions.length; i++) {
     if (!suggestions[i].startsWith(inputPrev)) {
       return '';
     }
@@ -74,11 +73,14 @@ export function getTabShared(input: string, suggestions: string[]): string {
 
 /**
  * Get tab complete suggestions for the defined input.
- * 
+ *
  * @param callbacks Tab complete callback functions.
  * @param input     Input string.
  */
-export async function getTabSuggestions(callbacks: any[], input: string): Promise<string[]> {
+export async function getTabSuggestions(
+  callbacks: any[],
+  input: string
+): Promise<string[]> {
   const fragments = parse(input) as string[];
 
   let index = fragments.length - 1;
@@ -89,49 +91,50 @@ export async function getTabSuggestions(callbacks: any[], input: string): Promis
     index = 0;
     fragment = '';
 
-  // ...else if tailing whitespace, increment index and set empty fragment.
+    // ...else if tailing whitespace, increment index and set empty fragment.
   } else if (hasTrailingWhitespace(input)) {
     index += 1;
     fragment = '';
   }
 
-  const suggestions = await callbacks.reduce(async (acc, { callback, args }) => {
-    try {
-      const res = await callback(index, fragments, ...args);
+  const suggestions = await callbacks.reduce(
+    async (acc, { callback, args }) => {
+      try {
+        const res = await callback(index, fragments, ...args);
 
-      return (await acc).concat(res);
-    } catch (error) {
-      console.error('Tab complete error:', error);
-      
-      return acc;
-    }
-  }, []);
+        return (await acc).concat(res);
+      } catch (error) {
+        console.error('Tab complete error:', error);
 
-  return suggestions.filter((suggestion: string) => (
+        return acc;
+      }
+    },
+    []
+  );
+
+  return suggestions.filter((suggestion: string) =>
     suggestion.startsWith(fragment)
-  ));
+  );
 }
 
 /**
  * Get last argument fragment for defined input.
- * 
+ *
  * @param input Input string.
  */
 export function getTrailingFragment(input: string): string {
-
-  // If input empty or has trailing whitespace, return empty string.
   if (hasTrailingWhitespace(input) || input.trim() === '') {
     return '';
   }
 
-  let fragments = parse(input) as string[];
+  const fragments = parse(input) as string[];
 
   return fragments.pop() || '';
 }
 
 /**
  * Get nearest word w/ respect to defined input and cursor offset.
- * 
+ *
  * @param input  Input string.
  * @param offset Input cursor offset.
  * @param rtl    Right to left.
@@ -143,7 +146,7 @@ export function getWord(input: string, offset: number, rtl: boolean) {
   let found;
   let matches;
 
-  while (matches = wordsRegex.exec(input)) {
+  while ((matches = wordsRegex.exec(input))) {
     words.push(matches.index);
   }
 
@@ -158,14 +161,11 @@ export function getWord(input: string, offset: number, rtl: boolean) {
 
 /**
  * Check if given input string has incomplete character(s).
- * 
+ *
  * @param input Input string.
  */
 export function hasIncompleteChars(input: string) {
-
-  // If input not empty, check for incomplete characters.
   if (input.trim()) {
-
     // Has open single quote.
     if ((input.match(/'/g) || []).length % 2 !== 0) {
       return true;
@@ -194,7 +194,7 @@ export function hasIncompleteChars(input: string) {
 
 /**
  * Check if defined input string has trailing whitespace.
- * 
+ *
  * @param input Input string.
  */
 export function hasTrailingWhitespace(input: string) {
