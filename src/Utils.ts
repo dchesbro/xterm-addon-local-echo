@@ -78,30 +78,32 @@ export function getTabShared(input: string, suggestions: string[]): string {
  * @param callbacks Tab complete callback functions.
  * @param input     Input string.
  */
-export function getTabSuggestions(callbacks: any[], input: string): string[] {
+export async function getTabSuggestions(callbacks: any[], input: string): Promise<string[]> {
   const fragments = parse(input) as string[];
 
   let index = fragments.length - 1;
   let fragment = fragments[index] || '';
 
-  // ...
+  // If input empty, set to initial index and empty fragment...
   if (input.trim() === '') {
     index = 0;
     fragment = '';
 
-  // ...
+  // ...else if tailing whitespace, increment index and set empty fragment.
   } else if (hasTrailingWhitespace(input)) {
     index += 1;
     fragment = '';
   }
 
-  const suggestions = callbacks.reduce((candidates, { callback, args }) => {
+  const suggestions = await callbacks.reduce(async (acc, { callback, args }) => {
     try {
-      return candidates.concat(callback(index, fragments, ...args));
+      const res = await callback(index, fragments, ...args);
+
+      return (await acc).concat(res);
     } catch (error) {
       console.error('Tab complete error:', error);
       
-      return candidates;
+      return acc;
     }
   }, []);
 

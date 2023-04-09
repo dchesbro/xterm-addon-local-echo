@@ -494,52 +494,55 @@ export class LocalEchoAddon implements ITerminalAddon {
           // If any tab complete handlers found, check for suggestions...
           if (this.tabCompleteHandlers.length) {
             const input = this.input.substring(0, this.cursor);
-            const suggestions = getTabSuggestions(
-              this.tabCompleteHandlers,
-              input
-            ).sort();
-            const trailingFragment = getTrailingFragment(input);
+            const fragment = getTrailingFragment(input);
 
-            // If no suggestions found, check for trailing whitespace...
-            if (suggestions.length === 0) {
-              const trailingWhitespace = hasTrailingWhitespace(input);
+            getTabSuggestions(this.tabCompleteHandlers, input)
+              .then((suggestions) => {
+                return suggestions.sort();
+              })
+              .then((suggestions) => {
 
-              // If no trailing whitespace found, insert tab.
-              if (!trailingWhitespace) {
-                this.handleCursorInsert('\t');
-              }
+                // If no suggestions found, check for trailing whitespace...
+                if (suggestions.length === 0) {
+                  const whitespace = hasTrailingWhitespace(input);
 
-            // ...else, if only one suggestion found append to input...
-            } else if (suggestions.length === 1) {
-              this.handleCursorInsert(
-                suggestions[0].substring(trailingFragment.length) + ' '
-              );
-
-            // ...else, if number of suggestions less than maximum print list...
-            } else if (suggestions.length <= this.tabCompleteSize) {
-              const shared = getTabShared(trailingFragment, suggestions);
-
-              // If shared fragment found, append to input.
-              if (shared) {
-                this.handleCursorInsert(shared.substring(trailingFragment.length));
-              }
-
-              this.applyPromptComplete(() => {
-                this.printlsInline(suggestions);
-              });
-
-            // ...else, print display all suggestions prompt.
-            } else {
-              this.applyPromptComplete(() =>
-                this.readChar(
-                  `Do you wish to see all ${suggestions.length} possibilities? (y/n) `
-                ).then((char) => {
-                  if (char === 'y' || char === 'Y') {
-                    this.printlsInline(suggestions);
+                  // If no trailing whitespace found, insert tab.
+                  if (!whitespace) {
+                    this.handleCursorInsert('\t');
                   }
-                })
-              );
-            }
+
+                // ...else, if only one suggestion found append to input...
+                } else if (suggestions.length === 1) {
+                  this.handleCursorInsert(
+                    suggestions[0].substring(fragment.length) + ' '
+                  );
+
+                // ...else, if number of suggestions less than maximum print list...
+                } else if (suggestions.length <= this.tabCompleteSize) {
+                  const shared = getTabShared(fragment, suggestions);
+
+                  // If shared fragment found, append to input.
+                  if (shared) {
+                    this.handleCursorInsert(shared.substring(fragment.length));
+                  }
+
+                  this.applyPromptComplete(() => {
+                    this.printlsInline(suggestions);
+                  });
+
+                // ...else, print display all suggestions prompt.
+                } else {
+                  this.applyPromptComplete(() =>
+                    this.readChar(
+                      `Do you wish to see all ${suggestions.length} possibilities? (y/n) `
+                    ).then((char) => {
+                      if (char === 'y' || char === 'Y') {
+                        this.printlsInline(suggestions);
+                      }
+                    })
+                  );
+                }
+              });
 
           // ...else, insert tab.
           } else {
@@ -584,7 +587,7 @@ export class LocalEchoAddon implements ITerminalAddon {
       this.activePrompt = null;
     }
 
-    this.terminal.write("\r\n");
+    this.terminal.write('\r\n');
 
     this.active = false;
   }
