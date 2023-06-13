@@ -1,4 +1,4 @@
-import { quote, parse } from 'shell-quote';
+import { parse, quote } from 'shell-quote';
 import ansiRegex from 'ansi-regex';
 
 /**
@@ -13,17 +13,17 @@ export function getColRow(input: string, offset: number, cols: number) {
   let row = 0;
 
   for (let i = 0; i < offset; i++) {
-    let ch = input.charAt(i);
+    const char = input.charAt(i);
 
-    if (ch === '\n') {
+    if (char === '\n') {
       col = 0;
-      row++;
+      row = row + 1;
     } else {
       col++;
 
       if (col === cols) {
         col = 0;
-        row++;
+        row += row + 1;
       }
     }
   }
@@ -42,20 +42,18 @@ export function getLineCount(input: string, cols: number) {
 }
 
 /**
- * Loop through suggestions to find fragment shared w/ defined input.
+ * Loop through suggestions to find part(s) shared w/ defined input.
  *
  * @param input       Input string.
  * @param suggestions Array of tab complete suggestions.
  */
 export function getTabShared(input: string, suggestions: string[]): string {
-  // End loop if input length is equal to or greater than suggestion length.
   if (input.length >= suggestions[0].length) {
     return input;
   }
 
   const inputPrev = input;
 
-  // Add suggestion fragment to input.
   input += suggestions[0].slice(input.length, input.length + 1);
 
   for (let i = 0; i < suggestions.length; i++) {
@@ -81,28 +79,25 @@ export async function getTabSuggestions(
   callbacks: any[],
   input: string
 ): Promise<string[]> {
-  const fragments = parse(input) as string[];
+  const args = parse(input) as string[];
 
-  let index = fragments.length - 1;
-  let fragment = fragments[index] || '';
+  let index = args.length - 1;
+  let subject = args[index] || '';
 
-  // If input empty, set to initial index and empty fragment...
   if (input.trim() === '') {
     index = 0;
-    fragment = '';
-
-    // ...else if tailing whitespace, increment index and set empty fragment.
+    subject = '';
   } else if (hasTrailingWhitespace(input)) {
     index += 1;
-    fragment = '';
+    subject = '';
   }
 
   const suggestions = await callbacks.reduce(
     async (acc, { callback, args }) => {
       try {
-        const res = await callback(index, fragments, ...args);
+        const candidates = await callback(index, subject, ...args);
 
-        return (await acc).concat(res);
+        return (await acc).concat(candidates);
       } catch (error) {
         console.error('Tab complete error:', error);
 
@@ -113,7 +108,7 @@ export async function getTabSuggestions(
   );
 
   return suggestions.filter((suggestion: string) =>
-    suggestion.startsWith(fragment)
+    suggestion.startsWith(subject)
   );
 }
 
@@ -122,14 +117,14 @@ export async function getTabSuggestions(
  *
  * @param input Input string.
  */
-export function getTrailingFragment(input: string): string {
-  if (hasTrailingWhitespace(input) || input.trim() === '') {
+export function getTrailingArgument(input: string): string {
+  if (input.trim() === '' || hasTrailingWhitespace(input)) {
     return '';
+  } else {
+    const args = parse(input) as string[];
+
+    return args[args.length - 1] || '';
   }
-
-  const fragments = parse(input) as string[];
-
-  return fragments.pop() || '';
 }
 
 /**

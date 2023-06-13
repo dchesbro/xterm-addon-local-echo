@@ -1,14 +1,11 @@
-/**
- * The history controller provides an ring-buffer
- */
 export class History {
   private index = 0;
-  private sizeMax: number;
+  private itemsMax: number;
 
   public items: string[] = [];
 
   constructor(size: number) {
-    this.sizeMax = size;
+    this.itemsMax = size;
   }
 
   /**
@@ -44,7 +41,7 @@ export class History {
     if (input !== prevItem) {
       this.items.push(input);
 
-      if (this.items.length > this.sizeMax) {
+      if (this.items.length > this.itemsMax) {
         this.items.shift();
       }
     }

@@ -4,7 +4,7 @@ import ansiRegex from 'ansi-regex';
 import { History } from './History';
 import {
   getColRow,
-  getTrailingFragment,
+  getTrailingArgument,
   getLineCount,
   getTabShared,
   getTabSuggestions,
@@ -507,13 +507,12 @@ export class LocalEchoAddon implements ITerminalAddon {
           // If any tab complete handlers found, check for suggestions...
           if (this.tabCompleteHandlers.length) {
             const input = this.input.substring(0, this.cursor);
-            const fragment = getTrailingFragment(input);
+            const fragment = getTrailingArgument(input);
 
-            getTabSuggestions(this.tabCompleteHandlers, input)
-              .then((suggestions) => {
-                return suggestions.sort();
-              })
-              .then((suggestions) => {
+            getTabSuggestions(this.tabCompleteHandlers, input).then(
+              (suggestions) => {
+                suggestions.sort();
+
                 // If no suggestions found, check for trailing whitespace...
                 if (suggestions.length === 0) {
                   const whitespace = hasTrailingWhitespace(input);
@@ -554,7 +553,8 @@ export class LocalEchoAddon implements ITerminalAddon {
                     })
                   );
                 }
-              });
+              }
+            );
 
             // ...else, insert tab.
           } else {
